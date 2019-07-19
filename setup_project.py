@@ -24,7 +24,7 @@ if __name__ == '__main__':
             desc='Downloading..', unit='file'):
         file = set + '_hebtb' + data
         url = root_url + file
-        urllib.request.urlretrieve(url, f'data/hebrew_tree_bank/{file}')
+        urllib.request.urlretrieve(url, f'elmo_on_md/data/hebrew_tree_bank/{file}')
     print("Finished downloading")
 
     # install the ELMO package
