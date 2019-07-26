@@ -1,0 +1,16 @@
+*.iml
+.idea/misc.xml
+*.xml
+*.lattices
+*.conll
+*.tokens
+**/*.egg
+/elmoformanylangs*/**/*
+ELMoForManyLangs/**/*
+ELMoForManyLangs/dist/elmoformanylangs-0.0.2-py3.7.egg
+/yapprojj/**/*
+ELMoForManyLangs/elmoformanylangs.egg-info/requires.txt
+ELMoForManyLangs/elmoformanylangs.egg-info/top_level.txt
+ELMoForManyLangs/dist/elmoformanylangs-0.0.2-py3.7.egg
+ELMoForManyLangs/elmoformanylangs.egg-info/requires.txt
+*.pyc
