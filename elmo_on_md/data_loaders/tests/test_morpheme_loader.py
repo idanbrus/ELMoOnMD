@@ -10,7 +10,7 @@ class TestMorphemes_loader(TestCase):
         data = morpheme_loader.load_data()
         self.assertGreater(len(data['train']), 0)
         self.assertEqual(len(data['train'][0]),5) # 5 words
-        self.assertEqual(len(data['train'][0][0]),51) #51 morphemes
+        self.assertEqual(len(data['train'][0][0]),47) #47 morphemes
         self.assertEqual(data['train'][0][0].sum(),1) #first word is quotes
     def test__map_pos(self):
         morpheme_loader = Morphemes_loader()

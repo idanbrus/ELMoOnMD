@@ -52,7 +52,7 @@ class Morphemes_loader(Loader):
 
     def _get_pos_and_token_id(self, morpheme_data):
         values = morpheme_data.split('\t')
-        return values[-3],int(values[-1])
+        return values[-4],int(values[-1])
 
     def _set_to_vec(self,set):
         ans = np.zeros(self.max_pos_id)
