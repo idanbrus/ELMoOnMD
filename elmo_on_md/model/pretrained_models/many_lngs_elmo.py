@@ -1,4 +1,4 @@
-from elmoformanylangs import Embedder
+from ELMoForManyLangs.elmoformanylangs.elmo import Embedder
 import torch.nn as nn
 import os
 
@@ -9,7 +9,8 @@ def get_pretrained_elmo() -> Embedder:
     Returns: an ELMo Embedder object.
 
     """
-    embedder = Embedder('..\..\..\..\ELMoForManyLangs\hebrew')
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    embedder = Embedder(os.path.join(root_dir, 'ELMoForManyLangs', 'hebrew'))
     model = embedder.model
 
     # open the entire model to fine tuning

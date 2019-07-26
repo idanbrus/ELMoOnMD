@@ -12,7 +12,6 @@ elmoformanylangs.egg-info/SOURCES.txt
 elmoformanylangs.egg-info/dependency_links.txt
 elmoformanylangs.egg-info/requires.txt
 elmoformanylangs.egg-info/top_level.txt
-elmoformanylangs/modules/__init__.py
 elmoformanylangs/modules/classify_layer.py
 elmoformanylangs/modules/elmo.py
 elmoformanylangs/modules/embedding_layer.py
