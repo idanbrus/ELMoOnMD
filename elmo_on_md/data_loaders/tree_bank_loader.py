@@ -30,6 +30,8 @@ class Morphemes_loader(Loader):
     def __init__(self):
         self.pos_mapping = dict()
         self.max_pos_id = 0
+        self.max_sentence_length = 80 # self measured at the moment
+        self.max_morpheme_count = 49 # self measured at the moment
     def load_data(self) -> dict:
         """
         loads all morphemes to a vector-like structure
@@ -55,7 +57,7 @@ class Morphemes_loader(Loader):
         return values[-4],int(values[-1])
 
     def _set_to_vec(self,set):
-        ans = np.zeros(self.max_pos_id)
+        ans = np.zeros(self.max_morpheme_count)
         ans[list(set)]=1
         return ans
 
@@ -70,9 +72,18 @@ class Morphemes_loader(Loader):
                 temp.append(([pair[0].strip()],pair[1]))
         return [(set([self._map_pos(p) for p in vals])) for (vals,pos) in temp]
 
+    def _get_sentence_vector(self,sentence):
+        mapped = self._get_sentence_morpheme_map(sentence)
+        answer = np.zeros((self.max_sentence_length,self.max_morpheme_count))
+        arr = np.array([self._set_to_vec(s) for s in mapped])
+        answer[:arr.shape[0],:arr.shape[1]]=arr
+        return answer
+
+
+
     def _read_morphemes(self, path):
         with open(path, 'r', encoding='utf-8') as file:
             content = file.read()
             splat = content.split('\n\n')
-            mapped = [self._get_sentence_morpheme_map(sentence.strip()) for sentence in splat]
-            return [[self._set_to_vec(s) for s in v] for v in mapped]
+            tensors = [self._get_sentence_vector(sentence.strip()) for sentence in splat if sentence.strip()]
+            return tensors
