@@ -72,5 +72,6 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int):
 
 if __name__ == '__main__':
     new_embedder = train()
-    with open('trained_models/new_model.pkl', 'wb') as file:
+    new_model_name = 'new_model'
+    with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)
