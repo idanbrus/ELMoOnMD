@@ -10,17 +10,8 @@ import os
 from os import path
 from tqdm import tqdm
 
-if __name__ == '__main__':
-    # Download Hebrew ELMo
-    if path.isfile('ELMoForManyLangs/hebrew.zip'):
-        print('ELMoForManyLangs was already downloaded, moving on...')
-    else:
-        print("Beginning Hebrew ELMo download...")
-        url = 'http://vectors.nlpl.eu/repository/11/154.zip'
-        urllib.request.urlretrieve(url, 'ELMoForManyLangs/hebrew.zip')
-        print("Finished downloading")
 
-    # Download Hebrew Tree Bank
+def download_tree_bank():
     if path.isdir('data/hebrew_tree_bank'):
         print('HebrewTreebank already exists, moving on...')
     else:
@@ -31,18 +22,31 @@ if __name__ == '__main__':
                 desc='Downloading..', unit='file'):
             file = set + '_hebtb' + data
             url = root_url + file
+            os.makedirs('data/hebrew_tree_bank')
             urllib.request.urlretrieve(url, f'data/hebrew_tree_bank/{file}')
         print("Finished downloading")
 
+
+def download_hebrew_elmo():
+    if path.isfile('ELMoForManyLangs/hebrew.zip'):
+        print('ELMoForManyLangs was already downloaded, moving on...')
+    else:
+        print("Beginning Hebrew ELMo download...")
+        url = 'http://vectors.nlpl.eu/repository/11/154.zip'
+        urllib.request.urlretrieve(url, 'ELMoForManyLangs/hebrew.zip')
+        print("Finished downloading")
+
+
+def download_yap():
     if path.isdir('yapproj'):
         print('Yap already cloned, moving on...')
     else:
         os.mkdir('yapproj')
         os.mkdir('yapproj/src')
         print("Beginning to Download yap tool...")
-        subprocess.run(["git", "clone", "https://github.com/OnlpLab/yap.git","yapproj/src/yap"])
-        #TODO: extract data
-        #TODO: The following:
+        subprocess.run(["git", "clone", "https://github.com/OnlpLab/yap.git", "yapproj/src/yap"])
+        # TODO: extract data
+        # TODO: The following:
         # 1. Set environment variable GOPATH=yapproj
         # 2. go to the src directory
         # 3. Do "go get ." and then "go build ."
@@ -50,5 +54,23 @@ if __name__ == '__main__':
 
         print("Finished cloning")
 
+
+def download_ner():
+    if path.isdir('data/ner'):
+        print('NER data already exists, moving on...')
+    else:
+        print("Beginning NER download...")
+        url = 'https://www.cs.bgu.ac.il/~elhadad/nlpproj/naama/tagged_corpus.txt'
+        os.makedirs('data/ner')
+        urllib.request.urlretrieve(url, f'data/ner/ner.txt')
+        print("Finished downloading")
+
+
+if __name__ == '__main__':
+    download_hebrew_elmo()
+    download_tree_bank()
+    download_yap()
+    download_ner()
+
     # install the ELMO package
-    subprocess.run("python ELMoForManyLangs/setup.py install")
+    # subprocess.run("python ELMoForManyLangs/setup.py install")

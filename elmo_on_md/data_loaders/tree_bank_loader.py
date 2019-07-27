@@ -3,9 +3,11 @@ import numpy as np
 import torch
 
 from elmo_on_md.data_loaders.loader import Loader
+import conllu
+import pandas as pd
 
 
-class Token_loader(Loader):
+class TokenLoader(Loader):
     def load_data(self) -> dict:
         """
         load the plain text, devided into tokens
@@ -28,7 +30,32 @@ class Token_loader(Loader):
             return corpus
 
 
-class Morphemes_loader(Loader):
+class DependencyTreesLoader(Loader):
+    def __init__(self):
+        self.max_sentence_length = 80
+
+    def load_data(self) -> dict:
+        """
+        load the plain text, devided into tokens
+        Returns: A dictionary with 3 entries: ['train', 'dev', 'test']
+        each one return a list of lists with sentences devided into tokens.
+        """
+        source_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        paths = [os.path.join(source_path, f'data\\hebrew_tree_bank\\{subset}_hebtb-gold.conll') for subset in
+                 ['train', 'dev', 'test']]
+        corpus = list(map(self._read_tokens, paths))
+        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'test': corpus[2]}
+        return corpus_dict
+
+    def _read_tokens(self, path):
+        with open(path, 'r', encoding='utf-8') as file:
+            content = conllu.parse(file.read())
+            content_df = [pd.DataFrame(sentence) for sentence in content]
+            # TODO: change the structure of the data
+            return content_df
+
+
+class MorphemesLoader(Loader):
     def __init__(self):
         self.pos_mapping = dict()
         self.max_pos_id = 0
@@ -39,7 +66,7 @@ class Morphemes_loader(Loader):
         """
         loads all morphemes to a vector-like structure
         Returns: A dictionary with 3 entries: ['train', 'dev', 'test']
-        Each entry is an array of vectors, each referening to a single token
+        Each entry is an array of vectors, each referring to a single token
         Each token is mapped to a vector of length 51, where each entry corresponds to a single POS tag
         """
         source_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))

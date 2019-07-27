@@ -8,37 +8,37 @@ from ELMoForManyLangs.elmoformanylangs.elmo import read_list, create_batches
 from torch.optim import Adam
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
-from elmo_on_md.data_loaders.tree_bank_loader import Token_loader, Morphemes_loader
+from elmo_on_md.data_loaders.tree_bank_loader import TokenLoader, MorphemesLoader
 from elmo_on_md.model.pretrained_models.many_lngs_elmo import get_pretrained_elmo
 
 
-def train():
+def train(tb_dir = 'default'):
     # create the pretrained elmo model
     embedder = get_pretrained_elmo()
-    model = embedder.model
+    elmo_model = embedder.model
 
     # some training parameters
     n_epochs = 2
-    total_pos_num = Morphemes_loader().max_morpheme_count
-    max_sentence_length = Morphemes_loader().max_sentence_length
+    total_pos_num = MorphemesLoader().max_morpheme_count
+    max_sentence_length = MorphemesLoader().max_sentence_length
 
     # create input data
-    tokens = Token_loader().load_data()
+    tokens = TokenLoader().load_data()
     train_w, train_c, train_lens, train_masks, train_text, recover_ind = transform_input(tokens['train'], embedder)
     val_w, val_c, val_lens, val_masks, val_text, val_recover_ind = transform_input(tokens['dev'], embedder, 64)
 
     # create MD data
-    train_md_labels = Morphemes_loader().load_data()['train']
+    train_md_labels = MorphemesLoader().load_data()['train']
     train_md_labels = split_data(train_md_labels, recover_ind, train_lens)
-    val_md_labels = Morphemes_loader().load_data()['dev']
+    val_md_labels = MorphemesLoader().load_data()['dev']
     val_md_labels = split_data(val_md_labels, val_recover_ind, val_lens)
 
     # create the MD module
     md_model = nn.Sequential(nn.Linear(1024, total_pos_num), nn.Sigmoid())  # TODO decide architectures
-    full_model = nn.Sequential(model, md_model)
+    full_model = nn.Sequential(elmo_model, md_model)
 
     # create the tensorboard
-    path = os.path.join('../../tensorboard_runs/')  # , str(datetime.datetime.now()))
+    path = os.path.join('../../tensorboard_runs/', tb_dir)  # , str(datetime.datetime.now()))
     writer = SummaryWriter(path)
     global_step = 0
 
@@ -51,7 +51,7 @@ def train():
             optimizer.zero_grad()
 
             # forward + pad with zeros
-            output = model.forward(w, c, masks).mean(dim=0)
+            output = elmo_model.forward(w, c, masks).mean(dim=0)
             output = md_model(output)
             target = torch.zeros((output.shape[0], max_sentence_length, total_pos_num))
             target[:, :output.shape[1], :] = output
@@ -61,7 +61,7 @@ def train():
             optimizer.step()
 
             # validation set
-            output = model.forward(val_w[0], val_c[0], val_masks[0]).mean(dim=0)
+            output = elmo_model.forward(val_w[0], val_c[0], val_masks[0]).mean(dim=0)
             output = md_model(output)
             target = torch.zeros((output.shape[0], max_sentence_length, total_pos_num))
             target[:, :output.shape[1], :] = output
@@ -96,7 +96,7 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int):
 
 
 if __name__ == '__main__':
-    new_embedder = train()
     new_model_name = 'new_model'
+    new_embedder = train(tb_dir = new_model_name)
     with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)

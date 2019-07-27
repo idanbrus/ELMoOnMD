@@ -12,7 +12,7 @@ def load_model(model_name: str) -> Embedder:
         model_name: the name of the model to be loaded.
         if the original (pretrained) is desired, the name should be 'original'
     Returns:
-        an ELMo embedder
+        an ELMo Embedder
     """
     if model_name == 'original':
         return get_pretrained_elmo()
