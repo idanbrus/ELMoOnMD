@@ -16,6 +16,6 @@ class TestNER(TestCase):
         cls.train_set, cls.test_set = train_test_split(ner_data, test_size=0.2)
 
     def test_train_predict(self):
-        self.ner_model.train(self.train_set)
+        self.ner_model.train(self.train_set, n_epochs=2)
         y_pred = self.ner_model.predict(self.test_set)
         y_pred

@@ -18,20 +18,19 @@ def train(tb_dir = 'default'):
     elmo_model = embedder.model
 
     # some training parameters
-    n_epochs = 2
+    n_epochs = 4
     total_pos_num = MorphemesLoader().max_morpheme_count
     max_sentence_length = MorphemesLoader().max_sentence_length
 
     # create input data
     tokens = TokenLoader().load_data()
-    train_w, train_c, train_lens, train_masks, train_text, recover_ind = transform_input(tokens['train'], embedder)
-    val_w, val_c, val_lens, val_masks, val_text, val_recover_ind = transform_input(tokens['dev'], embedder, 64)
+    train_w, train_c, train_lens, train_masks, train_text, recover_ind = transform_input(tokens['test'][:256], embedder, 16)
+    val_w, val_c, val_lens, val_masks, val_text, val_recover_ind = transform_input(tokens['dev'], embedder, 16)
 
     # create MD data
-    train_md_labels = MorphemesLoader().load_data()['train']
-    train_md_labels = split_data(train_md_labels, recover_ind, train_lens)
-    val_md_labels = MorphemesLoader().load_data()['dev']
-    val_md_labels = split_data(val_md_labels, val_recover_ind, val_lens)
+    md_data = MorphemesLoader().load_data()
+    train_md_labels = split_data(md_data['test'][:256], recover_ind, train_lens)
+    val_md_labels = split_data(md_data['dev'], val_recover_ind, val_lens)
 
     # create the MD module
     md_model = nn.Sequential(nn.Linear(1024, total_pos_num), nn.Sigmoid())  # TODO decide architectures
@@ -67,9 +66,13 @@ def train(tb_dir = 'default'):
             target[:, :output.shape[1], :] = output
             val_loss = criterion(target, val_md_labels[0])
 
+            accuracy = target * val_md_labels[0]
+            avg_accuracy = accuracy.sum() / val_md_labels[0].sum()
+
             # tensorboard stuff
             writer.add_scalar('train_loss', loss, global_step=global_step)
             writer.add_scalar('val_loss', val_loss, global_step=global_step)
+            writer.add_scalar('accuracy', avg_accuracy, global_step=global_step)
             global_step += 1
 
     return embedder
