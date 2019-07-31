@@ -4,6 +4,9 @@ from typing import List
 
 import torch
 import datetime
+
+from sklearn.metrics import precision_recall_fscore_support
+
 from ELMoForManyLangs.elmoformanylangs.elmo import read_list, create_batches
 from torch.optim import Adam
 from torch import nn
@@ -12,7 +15,8 @@ from elmo_on_md.data_loaders.tree_bank_loader import TokenLoader, MorphemesLoade
 from elmo_on_md.model.pretrained_models.many_lngs_elmo import get_pretrained_elmo
 
 
-def train(tb_dir = 'default'):
+def train(tb_dir='default'):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # create the pretrained elmo model
     embedder = get_pretrained_elmo()
     elmo_model = embedder.model
@@ -21,35 +25,52 @@ def train(tb_dir = 'default'):
     n_epochs = 4
     total_pos_num = MorphemesLoader().max_morpheme_count
     max_sentence_length = MorphemesLoader().max_sentence_length
+    positive_weight = 10
 
     # create input data
     tokens = TokenLoader().load_data()
-    train_w, train_c, train_lens, train_masks, train_text, recover_ind = transform_input(tokens['test'][:256], embedder, 16)
-    val_w, val_c, val_lens, val_masks, val_text, val_recover_ind = transform_input(tokens['dev'], embedder, 16)
+    train_w, train_c, train_lens, train_masks, train_text, recover_ind = transform_input(tokens['train'], embedder, 64)
+    val_w, val_c, val_lens, val_masks, val_text, val_recover_ind = transform_input(tokens['dev'], embedder, 32)
 
     # create MD data
     md_data = MorphemesLoader().load_data()
-    train_md_labels = split_data(md_data['test'][:256], recover_ind, train_lens)
-    val_md_labels = split_data(md_data['dev'], val_recover_ind, val_lens)
+    train_md_labels = split_data(md_data['train'], recover_ind, train_lens)
 
     # create the MD module
     md_model = nn.Sequential(nn.Linear(1024, total_pos_num), nn.Sigmoid())  # TODO decide architectures
-    full_model = nn.Sequential(elmo_model, md_model)
+    full_model = nn.Sequential(elmo_model, md_model).to(device)
 
     # create the tensorboard
     path = os.path.join('../../tensorboard_runs/', tb_dir)  # , str(datetime.datetime.now()))
     writer = SummaryWriter(path)
     global_step = 0
 
-    criterion = nn.BCELoss()  # Binary cross entropy
-    optimizer = Adam(full_model.parameters(), lr=0.01)
-    for i in range(n_epochs):
+    criterion = nn.BCEWithLogitsLoss(pos_weight=torch.ones(total_pos_num) * positive_weight)  # Binary cross entropy
+    optimizer = Adam(full_model.parameters(), lr=1e-4)
+
+    def validate():
+        with torch.no_grad():
+            y_pred = []
+            for w, c, lens, masks, texts in zip(val_w, val_c, val_lens, val_masks, val_text):
+                output = elmo_model.forward(w.to(device), c.to(device),
+                                            [masks[0].to(device), masks[1].to(device), masks[2].to(device)]).mean(dim=0)
+                output = md_model(output)
+                target = torch.zeros((output.shape[0], max_sentence_length, total_pos_num))
+                target[:, :output.shape[1], :] = output
+                y_pred.append(target)
+            y_pred = (torch.cat(y_pred, dim=0) > 0.5)
+            precision, recall, f_score, support = precision_recall_fscore_support(md_data['dev'].reshape(-1) ,
+                                                                                  y_pred.reshape(-1))
+            return precision[1], recall[1], f_score[1], support[1]
+
+    for epoch in range(n_epochs):
         # mini batches
         for w, c, lens, masks, texts, labels in zip(train_w, train_c, train_lens, train_masks, train_text,
                                                     train_md_labels):
             optimizer.zero_grad()
 
             # forward + pad with zeros
+            w, c, masks = w.to(device), c.to(device), [masks[0].to(device), masks[1].to(device), masks[2].to(device)]
             output = elmo_model.forward(w, c, masks).mean(dim=0)
             output = md_model(output)
             target = torch.zeros((output.shape[0], max_sentence_length, total_pos_num))
@@ -59,20 +80,18 @@ def train(tb_dir = 'default'):
             loss.backward()
             optimizer.step()
 
-            # validation set
-            output = elmo_model.forward(val_w[0], val_c[0], val_masks[0]).mean(dim=0)
-            output = md_model(output)
-            target = torch.zeros((output.shape[0], max_sentence_length, total_pos_num))
-            target[:, :output.shape[1], :] = output
-            val_loss = criterion(target, val_md_labels[0])
-
-            accuracy = target * val_md_labels[0]
-            avg_accuracy = accuracy.sum() / val_md_labels[0].sum()
-
-            # tensorboard stuff
             writer.add_scalar('train_loss', loss, global_step=global_step)
-            writer.add_scalar('val_loss', val_loss, global_step=global_step)
-            writer.add_scalar('accuracy', avg_accuracy, global_step=global_step)
+
+            # validation set
+            if global_step % 10 == 0:
+                output.to('cpu')
+                target.to('cpu')
+                loss.to('cpu')
+                precision, recall, f_score, _ = validate()
+                writer.add_scalar('validation/Precision', precision, global_step=global_step)
+                writer.add_scalar('validation/Recall', recall, global_step=global_step)
+                writer.add_scalar('validation/F_score', f_score, global_step=global_step)
+
             global_step += 1
 
     return embedder
@@ -99,7 +118,7 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int):
 
 
 if __name__ == '__main__':
-    new_model_name = 'new_model'
-    new_embedder = train(tb_dir = new_model_name)
+    new_model_name = 'low_recall'
+    new_embedder = train(tb_dir=new_model_name)
     with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)

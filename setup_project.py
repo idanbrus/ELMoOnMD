@@ -17,12 +17,12 @@ def download_tree_bank():
     else:
         print("Beginning Hebrew Tree Bank download...")
         root_url = 'https://raw.github.com/OnlpLab/HebrewResources/master/HebrewTreebank/hebtb/'
+        os.makedirs('data/hebrew_tree_bank')
         for set, data in tqdm(
                 list(product(['train', 'dev', 'test'], ['-gold.conll', '-gold.lattices', '.lattices', '.tokens'])),
                 desc='Downloading..', unit='file'):
             file = set + '_hebtb' + data
             url = root_url + file
-            os.makedirs('data/hebrew_tree_bank')
             urllib.request.urlretrieve(url, f'data/hebrew_tree_bank/{file}')
         print("Finished downloading")
 
@@ -69,7 +69,7 @@ def download_ner():
 if __name__ == '__main__':
     download_hebrew_elmo()
     download_tree_bank()
-    download_yap()
+    # download_yap()
     download_ner()
 
     # install the ELMO package

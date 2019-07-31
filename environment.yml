@@ -1,0 +1,37 @@
+name: coord2vec
+channels:
+- pytorch
+- defaults
+
+dependencies:
+# Core scientific python
+- numpy
+- matplotlib
+- python>=3.6
+- seaborn
+- pip
+- scikit-learn
+- scikit-image
+
+# Deep Learning
+- pytorch=1.1.0
+- torchvision
+- cudatoolkit
+
+
+# Jupyter Environment
+- autopep8
+- notebook
+- ipython
+- jupyter_contrib_nbextensions
+- jupyterlab
+- jupyter
+- nb_conda
+
+- pip:
+    - tqdm
+    - torchsummary
+    - tb-nightly
+    - future
+    - allennlp
+    - conllu

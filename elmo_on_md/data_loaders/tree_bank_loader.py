@@ -32,7 +32,7 @@ class TokenLoader(Loader):
 
 class DependencyTreesLoader(Loader):
     def __init__(self):
-        self.max_sentence_length = 80
+        self.max_sentence_length = 82
 
     def load_data(self) -> dict:
         """
@@ -59,7 +59,7 @@ class MorphemesLoader(Loader):
     def __init__(self):
         self.pos_mapping = dict()
         self.max_pos_id = 0
-        self.max_sentence_length = 80  # self measured at the moment
+        self.max_sentence_length = 82  # self measured at the moment
         self.max_morpheme_count = 49  # self measured at the moment
 
     def load_data(self) -> dict:
