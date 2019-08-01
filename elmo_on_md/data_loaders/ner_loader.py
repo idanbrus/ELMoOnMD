@@ -17,6 +17,7 @@ class NERLoader(Loader):
             with open(pickle_path, 'rb') as f:
                 return pickle.load(f)
         else:
+            print("Parsing the NER data. This might take a few minutes")
             ner_path = os.path.join(source_path, 'data', 'ner', 'ner.txt')
             with open(ner_path, 'r', encoding='utf8') as file:
                 content = file.read()

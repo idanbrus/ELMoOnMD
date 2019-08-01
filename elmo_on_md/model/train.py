@@ -25,7 +25,7 @@ def train(tb_dir='default'):
     n_epochs = 4
     total_pos_num = MorphemesLoader().max_morpheme_count
     max_sentence_length = MorphemesLoader().max_sentence_length
-    positive_weight = 10
+    positive_weight = 25
 
     # create input data
     tokens = TokenLoader().load_data()
@@ -118,7 +118,7 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int):
 
 
 if __name__ == '__main__':
-    new_model_name = 'low_recall'
+    new_model_name = 'mid_recall'
     new_embedder = train(tb_dir=new_model_name)
     with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)
