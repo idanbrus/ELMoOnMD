@@ -36,7 +36,6 @@ def download_hebrew_elmo():
         urllib.request.urlretrieve(url, 'ELMoForManyLangs/hebrew.zip')
         print("Finished downloading")
 
-
 def download_yap():
     if path.isdir('yapproj'):
         print('Yap already cloned, moving on...')
@@ -54,7 +53,6 @@ def download_yap():
 
         print("Finished cloning")
 
-
 def download_ner():
     if path.isdir('data/ner'):
         print('NER data already exists, moving on...')
@@ -65,12 +63,28 @@ def download_ner():
         urllib.request.urlretrieve(url, f'data/ner/ner.txt')
         print("Finished downloading")
 
+def download_sentiment():
+    if path.isfile('data/sentiment'):
+        print('Sentiment data already exists, moving on...')
+    else:
+        print("Sentiment data download...")
+        raw_url = 'https://raw.githubusercontent.com/omilab/Neural-Sentiment-Analyzer-for-Modern-Hebrew/master/data/'
+        os.makedirs('data/sentiment')
+        for set in tqdm(
+               ['train','test'],
+                desc='Downloading..', unit='file'):
+            file = 'token_' + set + '.tsv'
+            url = raw_url + file
+            urllib.request.urlretrieve(url, f'data/sentiment/{file}')
+        print("Finished downloading")
+
 
 if __name__ == '__main__':
     download_hebrew_elmo()
     download_tree_bank()
     # download_yap()
     download_ner()
+    download_sentiment()
 
     # install the ELMO package
     # subprocess.run("python ELMoForManyLangs/setup.py install")
