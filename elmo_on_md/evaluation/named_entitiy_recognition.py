@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import pandas as pd
 import torch
@@ -10,14 +10,20 @@ from ELMoForManyLangs.elmoformanylangs import Embedder
 
 
 class NER():
-    def __init__(self, elmo: Embedder, n_tags =1):
+    def __init__(self, elmo: Embedder, n_tags:int =8, pos_weight:float = 1):
         self.elmo = elmo
+        self.n_tags = n_tags
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model = BiLSTM(n_tags=n_tags).to(self.device)
-        self.criterion = nn.BCELoss()  # Binary cross entropy
+
+        # set up the model
+        self.model = BiLSTM(n_tags=n_tags + 1).to(self.device)
+        weights = torch.ones(n_tags) * pos_weight
+        weights = torch.cat([weights, torch.ones(1)]).to(self.device)
+        self.criterion = nn.CrossEntropyLoss(weight=weights)  # Binary cross entropy
         self.optimizer = Adam(self.model.parameters(), lr=1e-3)
 
     def train(self, train_set: List[pd.DataFrame],
+              tags_columns:List['str'],
               n_epochs: int = 10,
               batch_size: int = 64):
         # create input for the model
@@ -29,8 +35,9 @@ class NER():
 
                 X, max_sentence_length = self._create_input(batch_set)
                 output = self.model(X)
+                output = output.view(output.shape[0] * output.shape[1], -1) # flatten the results
 
-                y = self._create_labels(batch_set, max_sentence_length)
+                y = self._create_labels(batch_set, max_sentence_length, tags_columns)
                 loss = self.criterion(output, y)
 
                 loss.backward()
@@ -38,14 +45,15 @@ class NER():
 
         return self
 
-    def predict(self, test_set: List[pd.DataFrame]):
-        X, max_sentence_length = self._create_input(test_set)
+    def predict(self, test_set: List[pd.DataFrame]) -> torch.tensor:
         with torch.no_grad():
+
+            X, max_sentence_length = self._create_input(test_set)
             y_pred = self.model(X)
-        y_pred = y_pred > 0
+        y_pred = y_pred.argmax(dim=-1)
         return y_pred.to('cpu')
 
-    def _create_input(self, train_set):
+    def _create_input(self, train_set)-> Tuple[torch.tensor, int]:
         tokens = [sentence['word'] for sentence in train_set]
         X = self.elmo.sents2elmo(tokens)
         max_sentence_length = max([sentence.shape[0] for sentence in X])
@@ -54,10 +62,12 @@ class NER():
             input[i, :sentence.shape[0], :] = torch.from_numpy(sentence)
         return input.to(self.device), max_sentence_length
 
-    def _create_labels(self, train_set, max_sentence_length):
-        labels = torch.zeros(len(train_set), max_sentence_length)
+    def _create_labels(self, train_set, max_sentence_length, tags_columns) -> torch.tensor:
+        tag_col_names = tags_columns + ['not_name']
+        labels = torch.ones(len(train_set), max_sentence_length, dtype=torch.long) * len(tags_columns)
         for i, sentence in enumerate(train_set):
-            labels[i, :len(sentence)] = torch.from_numpy(sentence['label'].values)
+            labels[i, :len(sentence)] = torch.from_numpy(sentence[tag_col_names].values).argmax(1)
+        labels = labels.view(labels.shape[0] * labels.shape[1])
         return labels.to(self.device)
 
     def _chunker_list(self, l, n):
@@ -76,5 +86,5 @@ class BiLSTM(nn.Module):
 
     def forward(self, *input):
         output, (hn, cn) = self.lstm(input[0])
-        output = nn.Sigmoid()(self.hidden2label(output))
+        output = self.hidden2label(output)
         return output

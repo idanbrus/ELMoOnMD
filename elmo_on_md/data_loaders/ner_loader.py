@@ -3,11 +3,13 @@ import pickle
 
 import pandas as pd
 from elmo_on_md.data_loaders.loader import Loader
-
+from sklearn.preprocessing import LabelEncoder
 
 class NERLoader(Loader):
     def __init__(self, pickle_path='data/ner/ner.pkl'):
         self.pickle_path = pickle_path
+        self.types = ['PERS', 'MISC', 'LOC', 'TIME', 'MONEY', 'DATE', 'PERCENT', 'ORG']
+        self.NOT_NAME = 'not_name'
 
     def load_data(self):
         source_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -33,7 +35,13 @@ class NERLoader(Loader):
     def _sentence2df(self, sentence):
         df = pd.DataFrame(sentence, columns=['word', 'name_entity'])
         df = df[df['word'] != '']
-        df['label'] = 1
-        df['label'][df['name_entity'] == 'O'] = 0
+
+        # create single column for is named entity or not
+        df[self.NOT_NAME] = 1
+        df[self.NOT_NAME][df['name_entity'] != 'O'] = 0
+
+        # create one-hot columns for type
+        for type in self.types:
+            df[type] = df['name_entity'].str.contains(type).astype(int)
         return df
 
