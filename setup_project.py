@@ -64,7 +64,7 @@ def download_ner():
         print("Finished downloading")
 
 def download_sentiment():
-    if path.isfile('data/sentiment'):
+    if path.isdir('data/sentiment'):
         print('Sentiment data already exists, moving on...')
     else:
         print("Sentiment data download...")
