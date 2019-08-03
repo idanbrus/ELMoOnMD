@@ -5,6 +5,7 @@ from typing import List,Dict
 from torch.optim import Adam
 import numpy as np
 
+
 class RNN(nn.Module):
     def __init__(self, embedding_dim=1024,
                  hidden_dim=256,
@@ -13,6 +14,7 @@ class RNN(nn.Module):
         self.hidden_dim = hidden_dim
         self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, bidirectional=False)
         self.hidden2label = nn.Linear(hidden_dim, n_tags)
+        self.softmax = nn.Softmax()
 
     def forward(self, input):
         # hidden = (0,0)
@@ -22,6 +24,7 @@ class RNN(nn.Module):
             output, (hidden, cell) = self.lstm(input)
         sigmoid = nn.Sigmoid()
         output = sigmoid(self.hidden2label(hidden.squeeze())).squeeze()
+        output = self.softmax(output)
         return output
 
     def initHidden(self):
@@ -29,13 +32,13 @@ class RNN(nn.Module):
 
 
 class SentimentAnalysis():
-    def __init__(self, elmo: Embedder, n_tags=1):
+    def __init__(self, elmo: Embedder, n_tags=3):
         self.elmo = elmo
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = RNN(n_tags=n_tags)
         weights = torch.ones(n_tags)
         weights = torch.cat([weights, torch.ones(1)]).to(self.device)
-        self.criterion = nn.BCELoss()  # Binary cross entropy
+        self.criterion = nn.MultiLabelSoftMarginLoss()  # Binary cross entropy
         self.optimizer = Adam(self.model.parameters(), lr=1e-3)
         self.max_sentence_length = 100
 
@@ -79,7 +82,12 @@ class SentimentAnalysis():
         return input
 
     def _create_labels(self, train_set):
-        return torch.from_numpy(np.array(train_set['labels']).astype('float32'))
+        # return torch.from_numpy(np.array(train_set['labels']).astype('long'))
+        t = torch.LongTensor(train_set['labels'])
+        t = t.view(t.shape[0], 1)
+        tt = torch.Tensor(t.shape[0], 3)
+        tt.zero_()
+        return tt.scatter_(1, t, 1)
 
     def _chunker_list(self, train_set, n):
         s = train_set['sentences']
