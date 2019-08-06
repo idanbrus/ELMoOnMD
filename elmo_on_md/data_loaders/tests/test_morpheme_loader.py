@@ -8,7 +8,7 @@ class TestMorphemes_loader(TestCase):
     def __init__(self, *args, **kwargs):
         super(TestMorphemes_loader,self).__init__(*args,**kwargs)
         self.number_of_morphemes = 49
-        self.max_word_length = 80
+        self.max_word_length = 82
 
     def test_load_data(self):
         morpheme_loader = MorphemesLoader()
@@ -17,6 +17,14 @@ class TestMorphemes_loader(TestCase):
         self.assertEqual(data['train'][0][5:,:].sum(),0) # 5 words, after it only 0s
         self.assertEqual(data['train'][0].shape,(self.max_word_length,self.number_of_morphemes)) #49 morphemes, max 80 words
         self.assertEqual(data['train'][0][0,0],1) #first word is quotes
+    def test_load_data_power_set(self):
+        morpheme_loader = MorphemesLoader()
+        morpheme_loader.use_power_set = True
+        data = morpheme_loader.load_data()
+        self.assertGreater(len(data['train']), 0)
+        self.assertEqual(data['train'][0][5:,:].sum(),0) # 5 words, after it only 0s
+        self.assertEqual(data['train'][0].shape,(self.max_word_length,1)) #49 morphemes, max 80 words
+        self.assertEqual(data['train'][0][0,0],0) #first word is quotes, this time it's a unique key
     def test__map_pos(self):
         morpheme_loader = MorphemesLoader()
         self.assertEqual(morpheme_loader._map_pos('P1'),0)
@@ -40,6 +48,18 @@ class TestMorphemes_loader(TestCase):
         morpheme_loader.max_morpheme_count = 3
         self.assertEqual(len(morpheme_loader._set_to_vec({})), 3)
 
+    def test__set_to_vec_power_set(self):
+        morpheme_loader = MorphemesLoader()
+        morpheme_loader.use_power_set = True
+        morpheme_loader.max_morpheme_count=2
+        self.assertEqual(morpheme_loader._set_to_vec({0,1}),[0])
+        self.assertEqual(morpheme_loader._set_to_vec({}),[1])
+        self.assertEqual(morpheme_loader._set_to_vec({0}),[2])
+        self.assertEqual(morpheme_loader.max_power_set_key,3)
+        self.assertEqual(morpheme_loader._set_to_vec({0, 1}), [0])
+        self.assertEqual(morpheme_loader.max_power_set_key, 3)
+
+
     def test__get_sentence_morpheme_map(self):
         morpheme_loader = MorphemesLoader()
         test_string = """0	1	"	_	yyQUOT	yyQUOT	_	1
@@ -62,3 +82,16 @@ class TestMorphemes_loader(TestCase):
         5	6	.	_	yyDOT	yyDOT	_	5"""
         test_tensor = morpheme_loader._get_sentence_vector(test_string)
         self.assertEqual(test_tensor.shape,(self.max_word_length,self.number_of_morphemes))
+
+    def test__get_sentence_vector_power_set(self):
+        morpheme_loader = MorphemesLoader()
+        morpheme_loader.use_power_set = True
+        test_string = """0	1	"	_	yyQUOT	yyQUOT	_	1
+        1	2	תהיה	היה	COP	COP	gen=F|num=S|per=3	2
+        2	3	נקמה	נקמה	NN	NN	gen=F|num=S	3
+        3	4	ו	ו	CONJ	CONJ	_	4
+        4	5	בגדול	בגדול	RB	RB	_	4
+        5	6	.	_	yyDOT	yyDOT	_	5"""
+        test_tensor = morpheme_loader._get_sentence_vector(test_string)
+        self.assertEqual(test_tensor.shape,(self.max_word_length,1))
+
