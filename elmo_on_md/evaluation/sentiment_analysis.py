@@ -37,16 +37,16 @@ class SentimentAnalysis():
         weights = torch.ones(n_tags)
         weights = torch.cat([weights, torch.ones(1)]).to(self.device)
         self.criterion = nn.CrossEntropyLoss()  # Binary cross entropy
-        self.optimizer = Adam(self.model.parameters(), lr=1e-3)
+        self.optimizer = Adam(self.model.parameters(), lr=1e-5)
         self.max_sentence_length = 100
 
     def train(self, train_set: Dict,
               n_epochs: int = 10,
               batch_size: int = 64):
         # create input for the model
-        batch_generator = self._chunker_list(train_set, batch_size)
-
         for epoch in range(n_epochs):
+            batch_generator = self._chunker_list(train_set, batch_size)
+            epoch_loss = 0.0
             for batch_set in batch_generator:
                 self.optimizer.zero_grad()
 
@@ -58,13 +58,14 @@ class SentimentAnalysis():
 
                 loss.backward()
                 self.optimizer.step()
-
+                epoch_loss += output.shape[1] * loss.item()
+            print('Loss:', epoch_loss)
         return self
 
     def predict(self, test_set: Dict):
         X = self._create_input(test_set)
         y_pred = self.model(X)
-        return y_pred
+        return np.argmax(y_pred.detach().numpy(), axis=1)
 
     def _create_input(self, train_set):
         tokens = train_set['sentences']
