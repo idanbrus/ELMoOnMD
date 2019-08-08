@@ -61,6 +61,9 @@ class MorphemesLoader(Loader):
         self.max_pos_id = 0
         self.max_sentence_length = 82  # self measured at the moment
         self.max_morpheme_count = 49  # self measured at the moment
+        self.use_power_set = False
+        self.power_set_keys = dict()
+        self.max_power_set_key = 0
 
     def load_data(self) -> dict:
         """
@@ -87,9 +90,16 @@ class MorphemesLoader(Loader):
         return values[-4], int(values[-1])
 
     def _set_to_vec(self, set):
-        ans = np.zeros(self.max_morpheme_count)
-        ans[list(set)] = 1
-        return ans
+        if self.use_power_set:
+            key = '_'.join(str(n) for n in list(set))
+            if key not in self.power_set_keys:
+                self.power_set_keys[key] = self.max_power_set_key
+                self.max_power_set_key+=1
+            return [self.power_set_keys[key]]
+        else:
+            ans = np.zeros(self.max_morpheme_count)
+            ans[list(set)] = 1
+            return ans
 
     def _get_sentence_morpheme_map(self, sentence):
         morpheme_data = sentence.split('\n')
@@ -105,7 +115,10 @@ class MorphemesLoader(Loader):
 
     def _get_sentence_vector(self, sentence):
         mapped = self._get_sentence_morpheme_map(sentence)
-        answer = np.zeros((self.max_sentence_length, self.max_morpheme_count))
+        if self.use_power_set:
+            answer = np.zeros((self.max_sentence_length, 1))
+        else:
+            answer = np.zeros((self.max_sentence_length, self.max_morpheme_count))
         arr = np.array([self._set_to_vec(s) for s in mapped])
         answer[:arr.shape[0], :arr.shape[1]] = arr
         return answer
