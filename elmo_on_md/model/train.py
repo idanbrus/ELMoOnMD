@@ -15,29 +15,33 @@ from elmo_on_md.data_loaders.tree_bank_loader import TokenLoader, MorphemesLoade
 from elmo_on_md.model.pretrained_models.many_lngs_elmo import get_pretrained_elmo
 
 
-def train(tb_dir='default'):
+def train(tb_dir: str = 'default',
+          positive_weight: float = 1,
+          n_epochs: int = 3):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # create the pretrained elmo model
     embedder = get_pretrained_elmo()
     elmo_model = embedder.model
 
     # some training parameters
-    n_epochs = 3
     total_pos_num = MorphemesLoader().max_morpheme_count
     max_sentence_length = MorphemesLoader().max_sentence_length
-    positive_weight = 30
 
     # create input data
     tokens = TokenLoader().load_data()
     train_w, train_c, train_lens, train_masks, train_text, recover_ind = transform_input(tokens['train'], embedder, 64)
-    val_w, val_c, val_lens, val_masks, val_text, val_recover_ind = transform_input(tokens['dev'], embedder, 32)
+    val_w, val_c, val_lens, val_masks, val_text, val_recover_ind = transform_input(tokens['dev'], embedder, 8)
 
     # create MD data
     md_data = MorphemesLoader().load_data()
     train_md_labels = split_data(md_data['train'], recover_ind, train_lens)
+    val_md_labels = split_data(md_data['dev'], val_recover_ind, val_lens)
+    val_md_labels = torch.cat(val_md_labels)
 
     # create the MD module
-    md_model = nn.Sequential(nn.Linear(1024, total_pos_num), nn.Sigmoid())  # TODO decide architectures
+    md_model = nn.Sequential(nn.Linear(1024, 512),
+                             nn.ReLU(),
+                             nn.Linear(512, total_pos_num))  # TODO decide architectures
     full_model = nn.Sequential(elmo_model, md_model).to(device)
 
     # create the tensorboard
@@ -46,7 +50,7 @@ def train(tb_dir='default'):
     global_step = 0
 
     criterion = nn.BCEWithLogitsLoss(pos_weight=torch.ones(total_pos_num) * positive_weight)  # Binary cross entropy
-    optimizer = Adam(full_model.parameters(), lr=1e-4)
+    optimizer = Adam(full_model.parameters(), lr=1e-2)
 
     def validate():
         with torch.no_grad():
@@ -55,11 +59,16 @@ def train(tb_dir='default'):
                 output = elmo_model.forward(w.to(device), c.to(device),
                                             [masks[0].to(device), masks[1].to(device), masks[2].to(device)]).mean(dim=0)
                 output = md_model(output)
+                # apply mask
+                sentence_mask = masks[0].to(device)[:,:,None].float()
+                output = output * sentence_mask
+
                 target = torch.zeros((output.shape[0], max_sentence_length, total_pos_num))
                 target[:, :output.shape[1], :] = output
                 y_pred.append(target)
-            y_pred = (torch.cat(y_pred, dim=0) > 0.5)
-            precision, recall, f_score, support = precision_recall_fscore_support(md_data['dev'].reshape(-1) ,
+            y_pred = torch.cat(y_pred, dim=0)
+            y_pred = nn.Sigmoid()(y_pred) > 0.5
+            precision, recall, f_score, support = precision_recall_fscore_support(val_md_labels.reshape(-1),
                                                                                   y_pred.reshape(-1))
             return precision[1], recall[1], f_score[1], support[1]
 
@@ -73,6 +82,12 @@ def train(tb_dir='default'):
             w, c, masks = w.to(device), c.to(device), [masks[0].to(device), masks[1].to(device), masks[2].to(device)]
             output = elmo_model.forward(w, c, masks).mean(dim=0)
             output = md_model(output)
+
+            # apply mask
+            sentence_mask = masks[0].to(device)[:, :, None].float()
+            output = output * sentence_mask
+
+            # pad with zeros to fit the labels
             target = torch.zeros((output.shape[0], max_sentence_length, total_pos_num))
             target[:, :output.shape[1], :] = output
 
@@ -118,7 +133,7 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int):
 
 
 if __name__ == '__main__':
-    new_model_name = 'pos_factor_30'
-    new_embedder = train(tb_dir=new_model_name)
+    new_model_name = 'test'
+    new_embedder = train(tb_dir=new_model_name,n_epochs = 3, positive_weight=10)
     with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)
