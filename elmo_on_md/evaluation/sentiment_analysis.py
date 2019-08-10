@@ -12,15 +12,12 @@ class MyRNN(nn.Module):
                  n_tags=1):
         super().__init__()
         self.hidden_dim = hidden_dim
-        # self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, bidirectional=False)
         self.rnn = nn.RNN(embedding_dim, hidden_dim)
         self.hidden2label = nn.Linear(hidden_dim, n_tags)
         self.softmax = nn.Softmax()
 
     def forward(self, input):
         output, hidden = self.rnn(input)
-        # print(output.shape,hidden.shape,input.shape)
-        sigmoid = nn.Sigmoid()
         output = self.hidden2label(hidden.squeeze()).squeeze()
         output = self.softmax(output)
         return output
@@ -34,6 +31,7 @@ class SentimentAnalysis():
         self.elmo = elmo
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = MyRNN(n_tags=n_tags)
+        #TODO: set weights
         weights = torch.ones(n_tags)
         weights = torch.cat([weights, torch.ones(1)]).to(self.device)
         self.criterion = nn.CrossEntropyLoss()  # Binary cross entropy
@@ -69,13 +67,10 @@ class SentimentAnalysis():
 
     def _create_input(self, train_set):
         tokens = train_set['sentences']
+        #We set the first axis as the sentence length, so that the RNN can go over it
         X = self.elmo.sents2elmo([sentence[:self.max_sentence_length] for sentence in tokens])
-        # input = torch.zeros(len(X), self.max_sentence_length, X[0].shape[1])
-        # input = torch.zeros(len(X), X[0].shape[1],self.max_sentence_length)
         input = torch.zeros(self.max_sentence_length, len(X), X[0].shape[1])
         for i, sentence in enumerate(X):
-            # input[i, :sentence.shape[0], :] = torch.from_numpy(sentence)
-            # input[i, :,:sentence.shape[0]] = torch.from_numpy(sentence.T)
             input[:sentence.shape[0], i, :] = torch.from_numpy(sentence)
 
         return input
