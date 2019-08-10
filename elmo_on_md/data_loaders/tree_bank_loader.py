@@ -56,12 +56,12 @@ class DependencyTreesLoader(Loader):
 
 
 class MorphemesLoader(Loader):
-    def __init__(self):
+    def __init__(self, use_power_set = False):
         self.pos_mapping = dict()
         self.max_pos_id = 0
         self.max_sentence_length = 82  # self measured at the moment
         self.max_morpheme_count = 49  # self measured at the moment
-        self.use_power_set = False
+        self.use_power_set = use_power_set
         self.power_set_keys = dict()
         self.max_power_set_key = 0
 
@@ -121,7 +121,7 @@ class MorphemesLoader(Loader):
             answer = np.zeros((self.max_sentence_length, self.max_morpheme_count))
         arr = np.array([self._set_to_vec(s) for s in mapped])
         answer[:arr.shape[0], :arr.shape[1]] = arr
-        return answer
+        return answer.squeeze()
 
     def _read_morphemes(self, path):
         with open(path, 'r', encoding='utf-8') as file:

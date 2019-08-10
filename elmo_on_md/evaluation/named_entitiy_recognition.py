@@ -7,6 +7,7 @@ from torch.optim import Adam
 from tqdm import tqdm
 
 from ELMoForManyLangs.elmoformanylangs import Embedder
+from elmo_on_md.model.bi_lstm import BiLSTM
 
 
 class NER():
@@ -75,16 +76,4 @@ class NER():
             yield l[i:i + n]
 
 
-class BiLSTM(nn.Module):
-    def __init__(self, embedding_dim=1024,
-                 hidden_dim=256,
-                 n_tags=1):
-        super().__init__()
-        self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, bidirectional=True)
-        self.hidden2label = nn.Linear(hidden_dim * 2, n_tags)
 
-
-    def forward(self, *input):
-        output, (hn, cn) = self.lstm(input[0])
-        output = self.hidden2label(output)
-        return output
