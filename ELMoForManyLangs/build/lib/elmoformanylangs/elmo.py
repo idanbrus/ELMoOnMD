@@ -162,7 +162,7 @@ class Embedder(object):
         logging.info(str(model))
         model.load_model(self.model_dir)
 
-        # read test data according to input format
+        # read BiLSTM_pos_weight_8 data according to input format
 
         # configure the model to evaluation mode.
         model.eval()
@@ -176,7 +176,7 @@ class Embedder(object):
         else:
             test, text = read_function(sents)
 
-        # create test batches from the input data.
+        # create BiLSTM_pos_weight_8 batches from the input data.
         test_w, test_c, test_lens, test_masks, test_text, recover_ind = create_batches(
             test, self.batch_size, self.word_lexicon, self.char_lexicon, self.config, text=text)
 

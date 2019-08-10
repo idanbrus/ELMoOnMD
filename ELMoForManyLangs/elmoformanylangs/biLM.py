@@ -619,7 +619,7 @@ def train():
   elif test_data is None:
     logging.info("best train ppl: {:.6f}, best valid ppl: {:.6f}.".format(best_train, best_valid))
   else:
-    logging.info("best train ppl: {:.6f}, best valid ppl: {:.6f}, test ppl: {:.6f}.".format(best_train, best_valid, test_result))
+    logging.info("best train ppl: {:.6f}, best valid ppl: {:.6f}, BiLSTM_pos_weight_8 ppl: {:.6f}.".format(best_train, best_valid, test_result))
 
 
 def test():
@@ -694,7 +694,7 @@ def test():
 if __name__ == "__main__":
   if len(sys.argv) > 1 and sys.argv[1] == 'train':
     train()
-  elif len(sys.argv) > 1 and sys.argv[1] == 'test':
+  elif len(sys.argv) > 1 and sys.argv[1] == 'BiLSTM_pos_weight_8':
     test()
   else:
-    print('Usage: {0} [train|test] [options]'.format(sys.argv[0]), file=sys.stderr)
+    print('Usage: {0} [train|BiLSTM_pos_weight_8] [options]'.format(sys.argv[0]), file=sys.stderr)

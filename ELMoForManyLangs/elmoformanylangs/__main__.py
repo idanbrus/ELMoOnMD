@@ -207,7 +207,7 @@ def test_main():
   logging.info(str(model))
   model.load_model(args.model)
 
-  # read test data according to input format
+  # read BiLSTM_pos_weight_8 data according to input format
   read_function = read_corpus if args.input_format == 'plain' else (
     read_conll_corpus if args.input_format == 'conll' else (
       read_conll_char_corpus if args.input_format == 'conll_char' else read_conll_char_vi_corpus))
@@ -217,7 +217,7 @@ def test_main():
   else:
     test, text = read_function(args.input)
 
-  # create test batches from the input data.
+  # create BiLSTM_pos_weight_8 batches from the input data.
   test_w, test_c, test_lens, test_masks, test_text = create_batches(
     test, args.batch_size, word_lexicon, char_lexicon, config, text=text)
 
@@ -281,7 +281,7 @@ def test_main():
 
 
 if __name__ == "__main__":
-  if len(sys.argv) > 1 and sys.argv[1] == 'test':
+  if len(sys.argv) > 1 and sys.argv[1] == 'BiLSTM_pos_weight_8':
     test_main()
   else:
-    print('Usage: {0} [test] [options]'.format(sys.argv[0]), file=sys.stderr)
+    print('Usage: {0} [BiLSTM_pos_weight_8] [options]'.format(sys.argv[0]), file=sys.stderr)

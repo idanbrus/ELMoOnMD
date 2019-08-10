@@ -43,11 +43,11 @@ def train(tb_dir: str = 'default',
     total_pos_num = md_loader.max_power_set_key if use_power_set else md_loader.max_morpheme_count
 
     # create the MD module
-    md_model = BiLSTM(n_tags=total_pos_num)  # TODO decide architectures
+    md_model = BiLSTM(n_tags=total_pos_num, device=device)
     full_model = nn.Sequential(elmo_model, md_model).to(device)
 
     # create the tensorboard
-    path = os.path.join('../../tensorboard_runs/', tb_dir)  # , str(datetime.datetime.now()))
+    path = os.path.join('../../elmo_tb_runs/', tb_dir)  # , str(datetime.datetime.now()))
     writer = SummaryWriter(path)
     global_step = 0
 
@@ -60,8 +60,9 @@ def train(tb_dir: str = 'default',
             y_pred = []
             for w, c, lens, masks, texts in zip(val_w, val_c, val_lens, val_masks, val_text):
                 output = elmo_model.forward(w.to(device), c.to(device),
-                                            [masks[0].to(device), masks[1].to(device), masks[2].to(device)]).mean(dim=0)
+                                            [masks[0].to(device), masks[1].to(device), masks[2].to(device)])
                 output = md_model(output)
+
                 # apply mask
                 sentence_mask = masks[0].to(device)[:, :, None].float()
                 output = output * sentence_mask
@@ -86,7 +87,7 @@ def train(tb_dir: str = 'default',
 
             # forward + pad with zeros
             w, c, masks = w.to(device), c.to(device), [masks[0].to(device), masks[1].to(device), masks[2].to(device)]
-            output = elmo_model.forward(w, c, masks).mean(dim=0)
+            output = elmo_model.forward(w, c, masks)
             output = md_model(output)
 
             # apply mask
@@ -101,7 +102,7 @@ def train(tb_dir: str = 'default',
             full_output = full_output.transpose(-2, -1) if use_power_set else full_output
 
             loss = criterion(full_output, labels)
-            loss.backward()
+            loss.backward(retain_graph=True)
             optimizer.step()
 
             writer.add_scalar('train_loss', loss, global_step=global_step)
@@ -142,8 +143,9 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int, u
     return splited_data
 
 
+
 if __name__ == '__main__':
-    new_model_name = 'biLSTM_pos_weight_8'
-    new_embedder = train(tb_dir=new_model_name, n_epochs=10 , positive_weight=8, use_power_set=False)
+    new_model_name = 'test'
+    new_embedder = train(tb_dir=new_model_name, n_epochs=10, positive_weight=8, use_power_set=False)
     with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)

@@ -10,12 +10,12 @@ from elmo_on_md.evaluation.named_entitiy_recognition import NER
 class TestNER(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        elmo = load_model('pos_factor_30') # go back to original
+        elmo = load_model('original') # go back to original
         cls.ner_model = NER(elmo)
         ner_data = NERLoader().load_data()[:10]
         cls.train_set, cls.test_set = train_test_split(ner_data, test_size=0.2)
 
     def test_train_predict(self):
-        self.ner_model.train(self.train_set, NERLoader().types, n_epochs=2)
+        self.ner_model.train(self.train_set, self.test_set, NERLoader().types, n_epochs=2)
         y_pred = self.ner_model.predict(self.test_set)
         y_pred

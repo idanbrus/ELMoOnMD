@@ -19,7 +19,7 @@ def download_tree_bank():
         root_url = 'https://raw.github.com/OnlpLab/HebrewResources/master/HebrewTreebank/hebtb/'
         os.makedirs('data/hebrew_tree_bank')
         for set, data in tqdm(
-                list(product(['train', 'dev', 'test'], ['-gold.conll', '-gold.lattices', '.lattices', '.tokens'])),
+                list(product(['train', 'dev', 'BiLSTM_pos_weight_8'], ['-gold.conll', '-gold.lattices', '.lattices', '.tokens'])),
                 desc='Downloading..', unit='file'):
             file = set + '_hebtb' + data
             url = root_url + file
@@ -71,7 +71,7 @@ def download_sentiment():
         raw_url = 'https://raw.githubusercontent.com/omilab/Neural-Sentiment-Analyzer-for-Modern-Hebrew/master/data/'
         os.makedirs('data/sentiment')
         for set in tqdm(
-               ['train','test'],
+               ['train','BiLSTM_pos_weight_8'],
                 desc='Downloading..', unit='file'):
             file = 'token_' + set + '.tsv'
             url = raw_url + file

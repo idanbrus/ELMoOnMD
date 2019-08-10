@@ -11,14 +11,14 @@ class TokenLoader(Loader):
     def load_data(self) -> dict:
         """
         load the plain text, devided into tokens
-        Returns: A dictionary with 3 entries: ['train', 'dev', 'test']
+        Returns: A dictionary with 3 entries: ['train', 'dev', 'BiLSTM_pos_weight_8']
         each one return a list of lists with sentences devided into tokens.
         """
         source_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         paths = [os.path.join(source_path, f'data\\hebrew_tree_bank\\{subset}_hebtb.tokens') for subset in
                  ['train', 'dev', 'test']]
         corpus = list(map(self._read_tokens, paths))
-        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'test': corpus[2]}
+        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'BiLSTM_pos_weight_8': corpus[2]}
         return corpus_dict
 
     def _read_tokens(self, path):
@@ -37,14 +37,14 @@ class DependencyTreesLoader(Loader):
     def load_data(self) -> dict:
         """
         load the plain text, devided into tokens
-        Returns: A dictionary with 3 entries: ['train', 'dev', 'test']
+        Returns: A dictionary with 3 entries: ['train', 'dev', 'BiLSTM_pos_weight_8']
         each one return a list of lists with sentences devided into tokens.
         """
         source_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         paths = [os.path.join(source_path, f'data\\hebrew_tree_bank\\{subset}_hebtb-gold.conll') for subset in
                  ['train', 'dev', 'test']]
         corpus = list(map(self._read_tokens, paths))
-        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'test': corpus[2]}
+        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'BiLSTM_pos_weight_8': corpus[2]}
         return corpus_dict
 
     def _read_tokens(self, path):
@@ -68,7 +68,7 @@ class MorphemesLoader(Loader):
     def load_data(self) -> dict:
         """
         loads all morphemes to a vector-like structure
-        Returns: A dictionary with 3 entries: ['train', 'dev', 'test']
+        Returns: A dictionary with 3 entries: ['train', 'dev', 'BiLSTM_pos_weight_8']
         Each entry is an array of vectors, each referring to a single token
         Each token is mapped to a vector of length 51, where each entry corresponds to a single POS tag
         """
@@ -76,7 +76,7 @@ class MorphemesLoader(Loader):
         paths = [os.path.join(source_path, f'data\\hebrew_tree_bank\\{subset}_hebtb-gold.lattices') for subset in
                  ['train', 'dev', 'test']]
         corpus = list(map(self._read_morphemes, paths))
-        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'test': corpus[2]}
+        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'BiLSTM_pos_weight_8': corpus[2]}
         return corpus_dict
 
     def _map_pos(self, pos):
