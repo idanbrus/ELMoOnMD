@@ -4,7 +4,7 @@ from ELMoForManyLangs.elmoformanylangs import Embedder
 from typing import List,Dict
 from torch.optim import Adam
 import numpy as np
-
+import torch.nn.functional as F
 
 class MyRNN(nn.Module):
     def __init__(self, embedding_dim=1024,
@@ -18,30 +18,41 @@ class MyRNN(nn.Module):
 
     def forward(self, input):
         output, hidden = self.rnn(input)
-        output = self.hidden2label(hidden.squeeze()).squeeze()
+        hidden = F.relu(hidden)
+        output = self.hidden2label(hidden.squeeze())  # removed squueeze
         output = self.softmax(output)
         return output
 
-    def initHidden(self, input_size):
+    def initHidden(self, input_size):  # remove
         return torch.zeros((1, input_size, self.hidden_dim))
 
 
 class SentimentAnalysis():
-    def __init__(self, elmo: Embedder, n_tags=3):
+    def __init__(self, elmo: Embedder, n_tags=3, lr=1e-4):
         self.elmo = elmo
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = MyRNN(n_tags=n_tags)
-        #TODO: set weights
-        weights = torch.ones(n_tags)
-        weights = torch.cat([weights, torch.ones(1)]).to(self.device)
-        self.criterion = nn.CrossEntropyLoss()  # Binary cross entropy
-        self.optimizer = Adam(self.model.parameters(), lr=1e-5)
-        self.max_sentence_length = 100
+        self.loss = {'train': [], 'validate': []}
+
+        # Cross Entropy loss gets weights
+        print(lr)
+        self.optimizer = Adam(self.model.parameters(), lr=lr)
+        self.max_sentence_length = 40
 
     def train(self, train_set: Dict,
+              val_set: Dict,
               n_epochs: int = 10,
               batch_size: int = 64):
-        # create input for the model
+
+        labels = np.array(train_set['labels'])
+        unique, counts = np.unique(labels, return_counts=True)
+        weights = torch.FloatTensor(unique.shape[0])
+        for (x, y) in list(zip(unique, counts)):
+            weights[x] = 1.0 / y
+        print(weights)
+        print('the weights')
+        self.criterion = nn.CrossEntropyLoss(weight=weights)
+
         for epoch in range(n_epochs):
             batch_generator = self._chunker_list(train_set, batch_size)
             epoch_loss = 0.0
@@ -57,7 +68,16 @@ class SentimentAnalysis():
                 loss.backward()
                 self.optimizer.step()
                 epoch_loss += output.shape[1] * loss.item()
-            print('Loss:', epoch_loss)
+            # Validate
+            with torch.no_grad():
+                X_val = self._create_input(val_set)
+                y_val = self._create_labels(val_set)
+                output = self.model(X_val.to(self.device))
+
+                val_loss = self.criterion(output, y_val.to(self.device))
+                print(f"Epoch: {epoch}\t Train Loss: {epoch_loss}\t Validation Loss: {val_loss}")
+                self.loss['train'].append(epoch_loss)
+                self.loss['validate'].append(val_loss)
         return self
 
     def predict(self, test_set: Dict):
@@ -67,7 +87,7 @@ class SentimentAnalysis():
 
     def _create_input(self, train_set):
         tokens = train_set['sentences']
-        #We set the first axis as the sentence length, so that the RNN can go over it
+        # We set the first axis as the sentence length, so that the RNN can go over it
         X = self.elmo.sents2elmo([sentence[:self.max_sentence_length] for sentence in tokens])
         input = torch.zeros(self.max_sentence_length, len(X), X[0].shape[1])
         for i, sentence in enumerate(X):
