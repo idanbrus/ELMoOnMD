@@ -17,9 +17,9 @@ class SentimentLoader(Loader):
         """
         source_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         paths = [os.path.join(source_path, f'data\\sentiment\\token_{subset}.tsv') for subset in
-                 ['train', 'BiLSTM_pos_weight_8']]
+                 ['train', 'test']]
         corpus = list(map(self._read_file, paths))
-        corpus_dict = {'train': corpus[0], 'BiLSTM_pos_weight_8': corpus[1]}
+        corpus_dict = {'train': corpus[0], 'test': corpus[1]}
         return corpus_dict
 
     def _read_file(self,filename):

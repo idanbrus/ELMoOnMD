@@ -1,7 +1,5 @@
 from unittest import TestCase
 
-from sklearn.model_selection import train_test_split
-
 from elmo_on_md.data_loaders.sentiment_loader import SentimentLoader
 from elmo_on_md.evaluation.model_loader import load_model
 from elmo_on_md.evaluation.sentiment_analysis import SentimentAnalysis
@@ -23,6 +21,6 @@ class TestSentiment(TestCase):
         cls.train_subset = train_subset
         cls.test_subset = test_subset
     def test_train_predict(self):
-        self.sentiment_model.train(self.train_subset, n_epochs=2)
+        self.sentiment_model.train(self.train_subset,self.train_subset, n_epochs=2)
         y_pred = self.sentiment_model.predict(self.test_subset)
-        self.assertEqual(y_pred.size()[0],10)
+        self.assertEqual(len(y_pred),10)

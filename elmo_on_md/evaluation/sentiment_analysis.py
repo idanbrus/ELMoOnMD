@@ -46,7 +46,7 @@ class SentimentAnalysis():
 
         labels = np.array(train_set['labels'])
         unique, counts = np.unique(labels, return_counts=True)
-        weights = torch.FloatTensor(unique.shape[0])
+        weights = torch.FloatTensor(3)
         for (x, y) in list(zip(unique, counts)):
             weights[x] = 1.0 / y
         print(weights)
