@@ -49,31 +49,29 @@ class SentimentAnalysis():
         weights = torch.FloatTensor(3)
         for (x, y) in list(zip(unique, counts)):
             weights[x] = 1.0 / y
-        print(weights)
-        print('the weights')
         self.criterion = nn.CrossEntropyLoss(weight=weights)
+        X = self._create_input(train_set)
+        y = self._create_labels(train_set)
+
+        X_val = self._create_input(val_set)
+        y_val = self._create_labels(val_set)
+
 
         for epoch in range(n_epochs):
-            batch_generator = self._chunker_list(train_set, batch_size)
+            batch_generator = self._chunker_list(X, y,batch_size)
             epoch_loss = 0.0
-            for batch_set in batch_generator:
+            for batch_X,batch_y in batch_generator:
                 self.optimizer.zero_grad()
 
-                X = self._create_input(batch_set)
-                output = self.model(X)
-
-                y = self._create_labels(batch_set)
-                loss = self.criterion(output, y)
+                output = self.model(batch_X)
+                loss = self.criterion(output, batch_y)
 
                 loss.backward()
                 self.optimizer.step()
                 epoch_loss += output.shape[1] * loss.item()
             # Validate
             with torch.no_grad():
-                X_val = self._create_input(val_set)
-                y_val = self._create_labels(val_set)
                 output = self.model(X_val.to(self.device))
-
                 val_loss = self.criterion(output, y_val.to(self.device))
                 print(f"Epoch: {epoch}\t Train Loss: {epoch_loss}\t Validation Loss: {val_loss}")
                 self.loss['train'].append(epoch_loss)
@@ -98,11 +96,6 @@ class SentimentAnalysis():
     def _create_labels(self, train_set):
         return torch.from_numpy(np.array(train_set['labels']).astype('long')).long()
 
-    def _chunker_list(self, train_set, n):
-        s = train_set['sentences']
-        l = train_set['labels']
-        for i in range(0, len(l), n):
-            subset = dict()
-            subset['sentences'] = s[i:i + n]
-            subset['labels'] = l[i:i + n]
-            yield subset
+    def _chunker_list(self, X,y, n):
+        for i in range(0, X.shape[1], n):
+            yield X[:, i:i + n].to(self.device), y[i:i + n].to(self.device)
