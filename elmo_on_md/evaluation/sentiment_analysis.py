@@ -5,6 +5,9 @@ from typing import List,Dict
 from torch.optim import Adam
 import numpy as np
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
+from sklearn.metrics import precision_recall_fscore_support
+import os
 
 class MyRNN(nn.Module):
     def __init__(self, embedding_dim=1024,
@@ -32,7 +35,6 @@ class SentimentAnalysis():
         self.elmo = elmo
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = MyRNN(n_tags=n_tags)
-        self.loss = {'train': [], 'validate': []}
 
         # Cross Entropy loss gets weights
         print(lr)
@@ -42,7 +44,8 @@ class SentimentAnalysis():
     def train(self, train_set: Dict,
               val_set: Dict,
               n_epochs: int = 10,
-              batch_size: int = 64):
+              batch_size: int = 64,
+              tb_dir: str = 'default'):
 
         labels = np.array(train_set['labels'])
         unique, counts = np.unique(labels, return_counts=True)
@@ -55,6 +58,11 @@ class SentimentAnalysis():
 
         X_val = self._create_input(val_set)
         y_val = self._create_labels(val_set)
+
+        # create the tensorboard
+        path = os.path.join('../../sentiment_runs/', tb_dir)  # , str(datetime.datetime.now()))
+        writer = SummaryWriter(path)
+        global_step = 0
 
 
         for epoch in range(n_epochs):
@@ -71,11 +79,20 @@ class SentimentAnalysis():
                 epoch_loss += output.shape[1] * loss.item()
             # Validate
             with torch.no_grad():
-                output = self.model(X_val.to(self.device))
-                val_loss = self.criterion(output, y_val.to(self.device))
+                val_output = self.model(X_val.to(self.device))
+                val_loss = self.criterion(val_output, y_val.to(self.device))
                 print(f"Epoch: {epoch}\t Train Loss: {epoch_loss}\t Validation Loss: {val_loss}")
-                self.loss['train'].append(epoch_loss)
-                self.loss['validate'].append(val_loss)
+
+                writer.add_scalar('train_loss', epoch_loss, global_step=global_step)
+
+                # validation set
+                if global_step % 2 == 0:
+                    output.to('cpu')
+                    precision, recall, f_score, support = precision_recall_fscore_support(y_val,np.argmax(val_output.detach().numpy(), axis=1))
+                    writer.add_scalar('validation/Precision', precision.mean(), global_step=global_step)
+                    writer.add_scalar('validation/Recall', recall.mean(), global_step=global_step)
+                    writer.add_scalar('validation/F_score', f_score.mean(), global_step=global_step)
+                global_step += 1
         return self
 
     def predict(self, test_set: Dict):
