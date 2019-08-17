@@ -20,7 +20,8 @@ from elmo_on_md.model.pretrained_models.many_lngs_elmo import get_pretrained_elm
 def train(tb_dir: str = 'default',
           positive_weight: float = 3,
           n_epochs: int = 3,
-          use_power_set: bool = False):
+          use_power_set: bool = False,
+          lr:float = 1e-4):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # create the pretrained elmo model
     embedder = get_pretrained_elmo()
@@ -53,7 +54,7 @@ def train(tb_dir: str = 'default',
 
     criterion = nn.CrossEntropyLoss() if use_power_set else \
         nn.BCEWithLogitsLoss(pos_weight=torch.ones(total_pos_num) * positive_weight)  # Binary cross entropy
-    optimizer = Adam(full_model.parameters(), lr=1e-4)
+    optimizer = Adam(full_model.parameters(), lr=lr)
 
     def validate():
         with torch.no_grad():
@@ -146,6 +147,6 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int, u
 
 if __name__ == '__main__':
     new_model_name = 'test'
-    new_embedder = train(tb_dir=new_model_name, n_epochs=10, positive_weight=8, use_power_set=False)
+    new_embedder = train(tb_dir=new_model_name, n_epochs=4, positive_weight=8, lr=1e-4, use_power_set=True)
     with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)

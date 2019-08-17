@@ -17,7 +17,7 @@ class NER():
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # set up the model
-        self.model = BiLSTM(n_tags=n_tags + 1, device=self.device).to(self.device)
+        self.model = BiLSTM(n_tags=n_tags + 1, p_dropout=0.8, device=self.device).to(self.device)
         weights = torch.ones(n_tags) * pos_weight
         weights = torch.cat([weights, torch.ones(1)]).to(self.device)
         self.criterion = nn.CrossEntropyLoss(weight=weights)  # Binary cross entropy
@@ -27,7 +27,7 @@ class NER():
               val_set: List[pd.DataFrame],
               tags_columns: List['str'],
               n_epochs: int = 10,
-              batch_size: int = 128):
+              batch_size: int = 64):
 
         X, max_sentence_length = self._create_input(train_set)
         y = self._create_labels(train_set, max_sentence_length, tags_columns)
@@ -53,7 +53,10 @@ class NER():
 
             # Validate
             with torch.no_grad():
+                self.model = self.model.eval()
                 output = self.model(X_val.to(self.device))
+                # print(output[0]) #TODO delete
+                self.model = self.model.train()
                 output = output.view(output.shape[0] * output.shape[1], -1)  # flatten the results
 
                 val_loss = self.criterion(output, y_val.view(-1).to(self.device))
@@ -61,11 +64,17 @@ class NER():
         return self
 
     def predict(self, test_set: List[pd.DataFrame]) -> torch.tensor:
-        with torch.no_grad():
-            X, max_sentence_length = self._create_input(test_set)
-            y_pred = self.model(X.to(self.device))
+        y_pred = self.predict_proba(test_set)
         y_pred = y_pred.argmax(dim=-1)
         return y_pred.to('cpu')
+
+    def predict_proba(self, test_set:List[pd.DataFrame]) -> torch.tensor:
+        with torch.no_grad():
+            X, max_sentence_length = self._create_input(test_set)
+            self.model = self.model.eval()
+            y_pred = self.model(X.to(self.device))
+            self.model = self.model.train()
+        return y_pred
 
     def _create_input(self, train_set) -> Tuple[torch.tensor, int]:
         tokens = [sentence['word'] for sentence in train_set]
