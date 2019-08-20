@@ -1,9 +1,10 @@
 import os
 import pickle
-from typing import List
+from typing import List,Dict
 
 import torch
 import datetime
+import numpy as np
 
 from sklearn.metrics import precision_recall_fscore_support
 from tqdm import tqdm
@@ -20,7 +21,10 @@ from elmo_on_md.model.pretrained_models.many_lngs_elmo import get_pretrained_elm
 def train(tb_dir: str = 'default',
           positive_weight: float = 3,
           n_epochs: int = 3,
-          use_power_set: bool = False):
+          use_power_set: bool = False,
+          specific_tags_index: List  = None,
+          md_loader:MorphemesLoader = None,
+          md_data:Dict = None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # create the pretrained elmo model
     embedder = get_pretrained_elmo()
@@ -35,12 +39,13 @@ def train(tb_dir: str = 'default',
     val_w, val_c, val_lens, val_masks, val_text, val_recover_ind = transform_input(tokens['dev'], embedder, 8)
 
     # create MD data
-    md_loader = MorphemesLoader(use_power_set=use_power_set)
-    md_data = md_loader.load_data()
+    if md_loader is None:
+        md_loader = MorphemesLoader(use_power_set=use_power_set,specific_tags_index=np.array(specific_tags_index))
+        md_data = md_loader.load_data()
     train_md_labels = split_data(md_data['train'], recover_ind, train_lens, use_power_set=use_power_set)
     val_md_labels = split_data(md_data['dev'], val_recover_ind, val_lens, use_power_set=use_power_set)
     val_md_labels = torch.cat(val_md_labels)
-    total_pos_num = md_loader.max_power_set_key if use_power_set else md_loader.max_morpheme_count
+    total_pos_num = md_loader.max_power_set_key if use_power_set else len(specific_tags_index) if specific_tags_index is not None else md_loader.max_morpheme_count
 
     # create the MD module
     md_model = BiLSTM(n_tags=total_pos_num, device=device)
@@ -71,7 +76,7 @@ def train(tb_dir: str = 'default',
                 target[:, :output.shape[1], :] = output
                 y_pred.append(target)
             y_pred = torch.cat(y_pred, dim=0)
-            if use_power_set:
+            if use_power_set or (specific_tags_index is not None and len(specific_tags_index)==1):
                 y_pred = nn.Softmax(dim=-1)(y_pred).argmax(dim=-1)
             else:
                 y_pred = nn.Sigmoid()(y_pred) > 0.5
@@ -99,12 +104,11 @@ def train(tb_dir: str = 'default',
             full_output[:, :output.shape[1], :] = output
 
             # change format if using power set
-            full_output = full_output.transpose(-2, -1) if use_power_set else full_output
+            full_output = full_output.transpose(-2, -1) if use_power_set else full_output.squeeze() if (specific_tags_index is not None and len(specific_tags_index)==1) else full_output
 
-            loss = criterion(full_output, labels)
+            loss = criterion(full_output, labels.float())
             loss.backward(retain_graph=True)
             optimizer.step()
-
             writer.add_scalar('train_loss', loss, global_step=global_step)
 
             # validation set
@@ -146,6 +150,13 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int, u
 
 if __name__ == '__main__':
     new_model_name = 'test'
-    new_embedder = train(tb_dir=new_model_name, n_epochs=10, positive_weight=8, use_power_set=False)
-    with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
-        pickle.dump(new_embedder, file)
+    for i in range(MorphemesLoader().max_morpheme_count):
+        specific_tags_index = np.array([i])
+        use_power_set = False
+        md_loader = MorphemesLoader(use_power_set=use_power_set, specific_tags_index=np.array(specific_tags_index))
+        md_data = md_loader.load_data()
+        model_suffix = '_'.join(md_loader.reverse_pos_mapping[x] for x in specific_tags_index)
+        print(model_suffix)
+        new_embedder = train(tb_dir=new_model_name, n_epochs=10, positive_weight=8, use_power_set=use_power_set,specific_tags_index=specific_tags_index,md_loader=md_loader,md_data=md_data)
+        with open(f'trained_models/{new_model_name}_{model_suffix}.pkl', 'wb') as file:
+            pickle.dump(new_embedder, file)

@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 from elmo_on_md.data_loaders.loader import Loader
-import conllu
+#import conllu
 import pandas as pd
 
 
@@ -49,21 +49,25 @@ class DependencyTreesLoader(Loader):
 
     def _read_tokens(self, path):
         with open(path, 'r', encoding='utf-8') as file:
-            content = conllu.parse(file.read())
-            content_df = [pd.DataFrame(sentence) for sentence in content]
+            #TODO: fix conllu
+            return None
+            #content = conllu.parse(file.read())
+            #content_df = [pd.DataFrame(sentence) for sentence in content]
             # TODO: change the structure of the data
-            return content_df
+            #return content_df
 
 
 class MorphemesLoader(Loader):
-    def __init__(self, use_power_set = False):
+    def __init__(self, use_power_set = False,specific_tags_index = None):
         self.pos_mapping = dict()
+        self.reverse_pos_mapping = dict()
         self.max_pos_id = 0
         self.max_sentence_length = 82  # self measured at the moment
         self.max_morpheme_count = 49  # self measured at the moment
         self.use_power_set = use_power_set
         self.power_set_keys = dict()
         self.max_power_set_key = 0
+        self.specific_tags_index = specific_tags_index
 
     def load_data(self) -> dict:
         """
@@ -82,6 +86,7 @@ class MorphemesLoader(Loader):
     def _map_pos(self, pos):
         if pos not in self.pos_mapping:
             self.pos_mapping[pos] = self.max_pos_id
+            self.reverse_pos_mapping[self.max_pos_id] = pos
             self.max_pos_id += 1
         return self.pos_mapping[pos]
 
@@ -96,9 +101,12 @@ class MorphemesLoader(Loader):
                 self.power_set_keys[key] = self.max_power_set_key
                 self.max_power_set_key+=1
             return [self.power_set_keys[key]]
+
         else:
             ans = np.zeros(self.max_morpheme_count)
             ans[list(set)] = 1
+            if self.specific_tags_index is not None:
+                return ans[self.specific_tags_index]
             return ans
 
     def _get_sentence_morpheme_map(self, sentence):
@@ -117,6 +125,8 @@ class MorphemesLoader(Loader):
         mapped = self._get_sentence_morpheme_map(sentence)
         if self.use_power_set:
             answer = np.zeros((self.max_sentence_length, 1))
+        elif self.specific_tags_index is not None:
+            answer = np.zeros((self.max_sentence_length, len(self.specific_tags_index)))
         else:
             answer = np.zeros((self.max_sentence_length, self.max_morpheme_count))
         arr = np.array([self._set_to_vec(s) for s in mapped])
