@@ -15,18 +15,20 @@ class MyRNN(nn.Module):
                  n_tags=1):
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.rnn = nn.RNN(embedding_dim, hidden_dim)
-        self.dropout = nn.Dropout(p=0.2)
-        self.hidden2label = nn.Linear(hidden_dim, hidden_dim//2)
+        self.rnn = nn.LSTM(embedding_dim, hidden_dim,bidirectional=True)
+        self.dropout = nn.Dropout(p=0.5)
+        self.hidden2label = nn.Linear(hidden_dim*2, hidden_dim//2)
         self.hidden2label2 = nn.Linear(hidden_dim//2, n_tags)
         self.softmax = nn.Softmax()
 
     def forward(self, input):
-        output, hidden = self.rnn(input)
+        output, (hidden, something_else) = self.rnn(input)
+        hidden = torch.cat([hidden[0],hidden[1]],dim=1)
         hidden = F.relu(hidden)
         hidden = self.dropout(hidden)
         output = self.hidden2label(hidden.squeeze())  # removed squueeze
         output = F.relu(output)
+        output = self.dropout(output)
         output = self.hidden2label2(output)
         output = self.softmax(output)
         return output
@@ -44,7 +46,7 @@ class SentimentAnalysis():
         # Cross Entropy loss gets weights
         print(lr)
         self.optimizer = Adam(self.model.parameters(), lr=lr)
-        self.max_sentence_length = 60
+        self.max_sentence_length = 30
 
     def train(self, train_set: Dict,
               val_set: Dict,
