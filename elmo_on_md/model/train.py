@@ -44,7 +44,7 @@ def train(tb_dir: str = 'default',
     total_pos_num = md_loader.max_power_set_key if use_power_set else md_loader.max_morpheme_count
 
     # create the MD module
-    md_model = BiLSTM(n_tags=total_pos_num, device=device)
+    md_model = BiLSTM(n_tags=total_pos_num, device=device, p_dropout=0.5)
     full_model = nn.Sequential(elmo_model, md_model).to(device)
 
     # create the tensorboard
@@ -146,7 +146,7 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int, u
 
 
 if __name__ == '__main__':
-    new_model_name = 'test'
-    new_embedder = train(tb_dir=new_model_name, n_epochs=4, positive_weight=8, lr=1e-4, use_power_set=True)
+    new_model_name = 'pos_weight8_lr-4_dropout0.5'
+    new_embedder = train(tb_dir=new_model_name, n_epochs=10, positive_weight=8, lr=1e-4, use_power_set=False)
     with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)

@@ -76,7 +76,7 @@ class MorphemesLoader(Loader):
         paths = [os.path.join(source_path, f'data\\hebrew_tree_bank\\{subset}_hebtb-gold.lattices') for subset in
                  ['train', 'dev', 'test']]
         corpus = list(map(self._read_morphemes, paths))
-        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'BiLSTM_pos_weight_8': corpus[2]}
+        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'test': corpus[2]}
         return corpus_dict
 
     def _map_pos(self, pos):

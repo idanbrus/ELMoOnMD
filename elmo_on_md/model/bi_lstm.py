@@ -11,7 +11,7 @@ class BiLSTM(nn.Module):
         super().__init__()
         self.layer_weights = torch.ones((3, 1, 1, 1), requires_grad=True, device=device) / 3
         self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, bidirectional=True)
-        self.relu = nn.ReLU()
+        self.relu2 = nn.ReLU()
         self.dropout = nn.Dropout(p=p_dropout)
         self.hidden2label = nn.Linear(hidden_dim * 2, n_tags)
 
@@ -20,7 +20,7 @@ class BiLSTM(nn.Module):
         output = output.transpose(0, 1)
         output, (hn, cn) = self.lstm(output)
         output = output.transpose(0, 1)
-        output = self.relu(output)
+        output = self.relu2(output)
         output = self.dropout(output)
         output = self.hidden2label(output)
         return output

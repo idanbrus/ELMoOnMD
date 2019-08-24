@@ -5,7 +5,7 @@ from ELMoForManyLangs.elmoformanylangs import Embedder
 from elmo_on_md.model.pretrained_models.many_lngs_elmo import get_pretrained_elmo
 
 
-def load_model(model_name: str) -> Embedder:
+def load_model(model_name: str, batch_size:int = 64) -> Embedder:
     """
     load an elmo model
     Args:
@@ -15,7 +15,7 @@ def load_model(model_name: str) -> Embedder:
         an ELMo Embedder
     """
     if model_name == 'original':
-        return get_pretrained_elmo()
+        return get_pretrained_elmo(batch_size=batch_size)
     else:
         root_dir = os.path.dirname(os.path.dirname(os.path.dirname((os.path.abspath(__file__)))))
         with open(os.path.join(root_dir, 'elmo_on_md', 'model', 'trained_models', f'{model_name}.pkl'), 'rb') as f:
