@@ -41,7 +41,7 @@ class MyRNN(nn.Module):
     def initHidden(self, input_size):  # remove
         return torch.zeros((1, input_size, self.hidden_dim))
 
-
+#RECENT CHANGE
 class MyBiLSTM(nn.Module):
     def __init__(self, embedding_dim: int = 1024, hidden_dim: int = 256, max_sentence_length: int = 64, n_tags=3):
         super().__init__()
@@ -50,7 +50,8 @@ class MyBiLSTM(nn.Module):
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(256, n_tags)
 
-    def forward(self, input):
+    def forward(self, input,lengths):
+        X = nn.utils.rnn.pack_padded_sequence(input,lengths,enforce_sorted=False)
         output, (hn, cn) = self.lstm(input)
         output = self.fc1(output.reshape(output.shape[1], -1))
         output = self.relu(output)
