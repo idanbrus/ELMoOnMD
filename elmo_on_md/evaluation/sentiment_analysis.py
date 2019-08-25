@@ -21,8 +21,9 @@ class MyRNN(nn.Module):
         self.hidden2label2 = nn.Linear(hidden_dim//2, n_tags)
         self.softmax = nn.Softmax()
 
-    def forward(self, input):
-        output, (hidden, something_else) = self.rnn(input)
+    def forward(self, input,lengths):
+        X = nn.utils.rnn.pack_padded_sequence(input,lengths,enforce_sorted=False)
+        output, (hidden, something_else) = self.rnn(X)
         hidden = torch.cat([hidden[0],hidden[1]],dim=1)
         hidden = F.relu(hidden)
         hidden = self.dropout(hidden)
@@ -60,10 +61,10 @@ class SentimentAnalysis():
         for (x, y) in list(zip(unique, counts)):
             weights[x] = 1.0 / y
         self.criterion = nn.CrossEntropyLoss(weight=weights)
-        X = self._create_input(train_set)
+        X,lengths = self._create_input(train_set)
         y = self._create_labels(train_set)
 
-        X_val = self._create_input(val_set)
+        X_val,lengths_val = self._create_input(val_set)
         y_val = self._create_labels(val_set)
 
         # create the tensorboard
@@ -73,12 +74,12 @@ class SentimentAnalysis():
 
 
         for epoch in range(n_epochs):
-            batch_generator = self._chunker_list(X, y,batch_size)
+            batch_generator = self._chunker_list(X, y,lengths,batch_size)
             epoch_loss = 0.0
-            for batch_X,batch_y in batch_generator:
+            for batch_X,batch_y,batch_lengths in batch_generator:
                 self.optimizer.zero_grad()
 
-                output = self.model(batch_X)
+                output = self.model(batch_X,batch_lengths)
                 loss = self.criterion(output, batch_y)
 
                 loss.backward()
@@ -86,7 +87,7 @@ class SentimentAnalysis():
                 epoch_loss += output.shape[1] * loss.item()
             # Validate
             with torch.no_grad():
-                val_output = self.model(X_val.to(self.device))
+                val_output = self.model(X_val.to(self.device),lengths_val)
                 val_loss = self.criterion(val_output, y_val.to(self.device))
                 print(f"Epoch: {epoch}\t Train Loss: {epoch_loss}\t Validation Loss: {val_loss}")
 
@@ -103,23 +104,24 @@ class SentimentAnalysis():
         return self
 
     def predict(self, test_set: Dict):
-        X = self._create_input(test_set)
-        y_pred = self.model(X)
+        X,lengths = self._create_input(test_set)
+        y_pred = self.model(X,lengths)
         return np.argmax(y_pred.detach().numpy(), axis=1)
 
     def _create_input(self, train_set):
         tokens = train_set['sentences']
+        lengths = [min([len(s),self.max_sentence_length]) for s in train_set['sentences']]
         # We set the first axis as the sentence length, so that the RNN can go over it
         X = self.elmo.sents2elmo([sentence[:self.max_sentence_length] for sentence in tokens])
         input = torch.zeros(self.max_sentence_length, len(X), X[0].shape[1])
         for i, sentence in enumerate(X):
             input[:sentence.shape[0], i, :] = torch.from_numpy(sentence)
 
-        return input
+        return input,lengths
 
     def _create_labels(self, train_set):
         return torch.from_numpy(np.array(train_set['labels']).astype('long')).long()
 
-    def _chunker_list(self, X,y, n):
+    def _chunker_list(self, X,y,lengths, n):
         for i in range(0, X.shape[1], n):
-            yield X[:, i:i + n].to(self.device), y[i:i + n].to(self.device)
+            yield X[:, i:i + n].to(self.device), y[i:i + n].to(self.device),lengths[i:i+n]

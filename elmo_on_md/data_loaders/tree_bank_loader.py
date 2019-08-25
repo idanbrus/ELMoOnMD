@@ -56,33 +56,49 @@ class DependencyTreesLoader(Loader):
 
 
 class MorphemesLoader(Loader):
-    def __init__(self, use_power_set = False):
+    def __init__(self, use_power_set = False, min_appearance_threshold = 0, combine_yy = False):
         self.pos_mapping = dict()
-        self.max_pos_id = 0
+
         self.max_sentence_length = 82  # self measured at the moment
         self.max_morpheme_count = 49  # self measured at the moment
         self.use_power_set = use_power_set
         self.power_set_keys = dict()
         self.max_power_set_key = 0
+        self.min_appearance_threshold = min_appearance_threshold
+        self._pos_count = dict()
+        self.max_pos_id = 1 # we reserve 0 for below threshold or unknown
+        self._lock_map_pos = False # We use this variable to know we inited the map pos
+        self._combine_yy = combine_yy
 
     def load_data(self) -> dict:
         """
         loads all morphemes to a vector-like structure
-        Returns: A dictionary with 3 entries: ['train', 'dev', 'BiLSTM_pos_weight_8']
+        Returns: A dictionary with 3 entries: ['train', 'dev', 'test']
         Each entry is an array of vectors, each referring to a single token
         Each token is mapped to a vector of length 51, where each entry corresponds to a single POS tag
         """
         source_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         paths = [os.path.join(source_path, f'data\\hebrew_tree_bank\\{subset}_hebtb-gold.lattices') for subset in
                  ['train', 'dev', 'test']]
+
+        self._init_map_pos(paths[0])
+        self._lock_map_pos = True
         corpus = list(map(self._read_morphemes, paths))
-        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'BiLSTM_pos_weight_8': corpus[2]}
+        corpus_dict = {'train': corpus[0], 'dev': corpus[1], 'test': corpus[2]}
         return corpus_dict
 
     def _map_pos(self, pos):
+        if self._combine_yy and pos.startswith('yy'):
+            pos = 'YY'
         if pos not in self.pos_mapping:
-            self.pos_mapping[pos] = self.max_pos_id
-            self.max_pos_id += 1
+            if not self._lock_map_pos:
+                self.pos_mapping[pos] = self.max_pos_id
+                self.max_pos_id += 1
+            else:
+                self.pos_mapping[pos] = 0
+        if pos not in self._pos_count:
+            self._pos_count[pos] = 0
+        self._pos_count[pos] += 1
         return self.pos_mapping[pos]
 
     def _get_pos_and_token_id(self, morpheme_data):
@@ -97,7 +113,7 @@ class MorphemesLoader(Loader):
                 self.max_power_set_key+=1
             return [self.power_set_keys[key]]
         else:
-            ans = np.zeros(self.max_morpheme_count)
+            ans = np.zeros(self.max_pos_id)
             ans[list(set)] = 1
             return ans
 
@@ -118,14 +134,38 @@ class MorphemesLoader(Loader):
         if self.use_power_set:
             answer = np.zeros((self.max_sentence_length, 1))
         else:
-            answer = np.zeros((self.max_sentence_length, self.max_morpheme_count))
+            answer = np.zeros((self.max_sentence_length, self.max_pos_id))
         arr = np.array([self._set_to_vec(s) for s in mapped])
         answer[:arr.shape[0], :arr.shape[1]] = arr
         return answer.squeeze()
+
+    def _init_map_pos(self,path):
+        self._read_morphemes(path)
+        for pos in self.pos_mapping:
+            if self._pos_count[pos]<self.min_appearance_threshold:
+                self.pos_mapping[pos]=0
+        new_pos_mapping = dict()
+        self.max_pos_id = 1
+        for pos in self.pos_mapping:
+            if self.pos_mapping[pos]==0:
+                new_pos_mapping[pos]=0
+            else:
+                new_pos_mapping[pos]=self.max_pos_id
+                self.max_pos_id+=1
+        self.pos_mapping = new_pos_mapping
 
     def _read_morphemes(self, path):
         with open(path, 'r', encoding='utf-8') as file:
             content = file.read()
             splat = content.split('\n\n')
-            tensors = [self._get_sentence_vector(sentence.strip()) for sentence in splat if sentence.strip()]
-            return torch.FloatTensor(tensors)
+            tensors = [torch.FloatTensor(self._get_sentence_vector(sentence.strip())) for sentence in splat if sentence.strip()]
+            if self.use_power_set:
+                answer = torch.zeros((len(tensors), tensors[-1].shape[0]))
+                for i, tensor in enumerate(tensors):
+                    answer[i, :tensor.shape[0]] = tensor
+                return answer
+            else:
+                answer = torch.zeros((len(tensors),tensors[-1].shape[0],tensors[-1].shape[1]))
+                for i,tensor in enumerate(tensors):
+                    answer[i,:tensor.shape[0],:tensor.shape[1]]=tensor
+                return answer
