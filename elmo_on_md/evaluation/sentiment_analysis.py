@@ -46,23 +46,30 @@ class MyBiLSTM(nn.Module):
     def __init__(self, embedding_dim: int = 1024, hidden_dim: int = 256, max_sentence_length: int = 64, n_tags=3):
         super().__init__()
         self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, bidirectional=True)
-        self.fc1 = nn.Linear(hidden_dim * max_sentence_length * 2, 256)
+        self.dropout = nn.Dropout(p=0.2)
+        self.fc1 = nn.Linear(hidden_dim * 2, hidden_dim // 2)
         self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(256, n_tags)
+        self.fc2 = nn.Linear(hidden_dim // 2, n_tags)
+        self.softmax = nn.Softmax()
 
     def forward(self, input,lengths):
         X = nn.utils.rnn.pack_padded_sequence(input,lengths,enforce_sorted=False)
         output, (hn, cn) = self.lstm(input)
-        output = self.fc1(output.reshape(output.shape[1], -1))
+        hidden = torch.cat([hn[0], hn[1]], dim=1)
+        hidden = self.dropout(hidden)
+        #output = self.fc1(output.reshape(output.shape[1], -1))
+        output = self.fc1(hidden.squeeze())
+        output = self.dropout(output)
         output = self.relu(output)
         output = self.fc2(output)
+        output = self.softmax(output)
         return output
 
 
 class SentimentAnalysis():
     def __init__(self, elmo: Embedder, lr: float = 1e-4):
         self.elmo = elmo
-        self.max_sentence_length = 93
+        self.max_sentence_length = 30
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = MyBiLSTM(max_sentence_length=self.max_sentence_length).to(self.device)
 
