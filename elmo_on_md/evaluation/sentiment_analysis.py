@@ -95,7 +95,7 @@ class SentimentAnalysis():
         y_val = self._create_labels(val_set)
 
         # create the tensorboard
-        path = os.path.join('../../sentiment_runs/', tb_dir)  # , str(datetime.datetime.now()))
+        path = os.path.join('../sentiment_runs/', tb_dir)  # , str(datetime.datetime.now()))
         writer = SummaryWriter(path)
         global_step = 0
 

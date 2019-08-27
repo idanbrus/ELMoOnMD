@@ -21,9 +21,9 @@ def train(tb_dir: str = 'default',
           positive_weight: float = 3,
           n_epochs: int = 3,
           use_power_set: bool = False,
-          min_appearance_threshold:int = 0,
+          min_appearance_threshold: int = 0,
           combine_yy: bool = False,
-          lr:float = 1e-4):
+          lr: float = 1e-4):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # create the pretrained elmo model
     embedder = get_pretrained_elmo()
@@ -38,7 +38,8 @@ def train(tb_dir: str = 'default',
     val_w, val_c, val_lens, val_masks, val_text, val_recover_ind = transform_input(tokens['dev'], embedder, 8)
 
     # create MD data
-    md_loader = MorphemesLoader(use_power_set=use_power_set,min_appearance_threshold=min_appearance_threshold, combine_yy=combine_yy)
+    md_loader = MorphemesLoader(use_power_set=use_power_set, min_appearance_threshold=min_appearance_threshold,
+                                combine_yy=combine_yy)
     md_data = md_loader.load_data()
     train_md_labels = split_data(md_data['train'], recover_ind, train_lens, use_power_set=use_power_set)
     val_md_labels = split_data(md_data['dev'], val_recover_ind, val_lens, use_power_set=use_power_set)
@@ -46,7 +47,7 @@ def train(tb_dir: str = 'default',
     total_pos_num = md_loader.max_power_set_key if use_power_set else md_loader.max_pos_id
 
     # create the MD module
-    md_model = BiLSTM(n_tags=total_pos_num, device=device, p_dropout=0.5)
+    md_model = BiLSTM(n_tags=total_pos_num, device=device, p_dropout=0.0)
     full_model = nn.Sequential(elmo_model, md_model).to(device)
 
     # create the tensorboard
@@ -146,9 +147,9 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int, u
     return splited_data
 
 
-
 if __name__ == '__main__':
-    new_model_name = 'pos_weight8_lr-4_combineyy'
-    new_embedder = train(tb_dir=new_model_name, n_epochs=10, positive_weight=8, lr=1e-4, use_power_set=False,min_appearance_threshold=1000, combine_yy=True)
+    new_model_name = 'pos_weight8_lr-4_new_tags_30epochs'
+    new_embedder = train(tb_dir=new_model_name, n_epochs=30, positive_weight=8, lr=1e-4, min_appearance_threshold=100,
+                         combine_yy=True)
     with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)
