@@ -9,7 +9,7 @@ class TestSentiment(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         elmo = load_model('original') # go back to original
-        cls.sentiment_model = SentimentAnalysis(elmo)
+        cls.sentiment_model = SentimentAnalysis([elmo,elmo])
         sentiment_data = SentimentLoader().load_data()
         train = sentiment_data['train']
         train_subset = dict()

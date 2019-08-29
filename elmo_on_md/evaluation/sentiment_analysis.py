@@ -71,8 +71,8 @@ class MyBiLSTM(nn.Module):
 
 
 class SentimentAnalysis():
-    def __init__(self, elmo: Embedder, lr: float = 1e-4):
-        self.elmo = elmo
+    def __init__(self, elmos: List[Embedder], lr: float = 1e-4):
+        self.elmos = elmos
         self.max_sentence_length = 90
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = MyBiLSTM(max_sentence_length=self.max_sentence_length).to(self.device)
@@ -144,10 +144,21 @@ class SentimentAnalysis():
         tokens = train_set['sentences']
         lengths = [min([len(s),self.max_sentence_length]) for s in train_set['sentences']]
         # We set the first axis as the sentence length, so that the RNN can go over it
-        X = self.elmo.sents2elmo([sentence[:self.max_sentence_length] for sentence in tokens])
-        input = torch.zeros(self.max_sentence_length, len(X), X[0].shape[1])
-        for i, sentence in enumerate(X):
-            input[:sentence.shape[0], i, :] = torch.from_numpy(sentence)
+        Xs = []
+        for elmo in self.elmos:
+            X = elmo.sents2elmo([sentence[:self.max_sentence_length] for sentence in tokens])
+            Xs.append(X)
+
+        total_embedding = 0
+        for X in Xs:
+            total_embedding += X[0].shape[1]
+        input = torch.zeros(self.max_sentence_length, len(Xs[0]), total_embedding)
+
+        embedding_start = 0
+        for X in Xs:
+            for i, sentence in enumerate(X):
+                input[:sentence.shape[0], i, embedding_start:(embedding_start+sentence.shape[1])] = torch.from_numpy(sentence)
+            embedding_start += X[0].shape[1]
 
         return input,lengths
 
