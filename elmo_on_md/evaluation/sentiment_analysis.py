@@ -46,8 +46,9 @@ class MyBiLSTM(nn.Module):
     def __init__(self, embedding_dim: int = 1024, hidden_dim: int = 256, max_sentence_length: int = 64, n_tags=3):
         super().__init__()
         self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, bidirectional=True)
-        self.dropout = nn.Dropout(p=0.2)
-        self.fc1 = nn.Linear(hidden_dim * 2, hidden_dim // 2)
+        self.lstm2 = nn.LSTM(input_size=hidden_dim*2, hidden_size=hidden_dim//2, bidirectional=True)
+        self.dropout = nn.Dropout(p=0.5)
+        self.fc1 = nn.Linear(hidden_dim, hidden_dim // 2)
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(hidden_dim // 2, n_tags)
         self.softmax = nn.Softmax()
@@ -55,6 +56,9 @@ class MyBiLSTM(nn.Module):
     def forward(self, input,lengths):
         X = nn.utils.rnn.pack_padded_sequence(input,lengths,enforce_sorted=False)
         output, (hn, cn) = self.lstm(input)
+        output  = self.dropout(output)
+        output = nn.utils.rnn.pack_padded_sequence(output,lengths,enforce_sorted=False)
+        output, (hn, cn) = self.lstm2(output)
         hidden = torch.cat([hn[0], hn[1]], dim=1)
         hidden = self.dropout(hidden)
         #output = self.fc1(output.reshape(output.shape[1], -1))
@@ -69,7 +73,7 @@ class MyBiLSTM(nn.Module):
 class SentimentAnalysis():
     def __init__(self, elmo: Embedder, lr: float = 1e-4):
         self.elmo = elmo
-        self.max_sentence_length = 30
+        self.max_sentence_length = 90
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = MyBiLSTM(max_sentence_length=self.max_sentence_length).to(self.device)
 
@@ -120,7 +124,7 @@ class SentimentAnalysis():
                 writer.add_scalar('train_loss', loss, global_step=global_step)
 
                 # validation set
-                if global_step % 2 == 0:
+                if global_step % 10 == 0:
                     output.to('cpu')
                     precision, recall, f_score, support = precision_recall_fscore_support(y_val.to('cpu'), np.argmax(
                         val_output.to('cpu').detach().numpy(), axis=1))
