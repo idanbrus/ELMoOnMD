@@ -57,7 +57,7 @@ def train(tb_dir: str = 'default',
 
     criterion = nn.CrossEntropyLoss() if use_power_set else \
         nn.BCEWithLogitsLoss(pos_weight=torch.ones(total_pos_num) * positive_weight)  # Binary cross entropy
-    optimizer = Adam(full_model.parameters(), lr=lr)
+    optimizer = Adam(md_model.parameters(), lr=lr)
 
     def validate():
         with torch.no_grad():
@@ -123,7 +123,11 @@ def train(tb_dir: str = 'default',
 
             global_step += 1
 
-    return embedder
+        # switch to train the ELMO too
+        if epoch == 15:
+            optimizer = Adam(full_model.parameters(), lr=lr)
+
+    return embedder, md_model
 
 
 # code taken from ELMO for Many LAN
@@ -148,8 +152,8 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int, u
 
 
 if __name__ == '__main__':
-    new_model_name = 'pos_weight8_lr-4_new_tags_30epochs'
-    new_embedder = train(tb_dir=new_model_name, n_epochs=30, positive_weight=8, lr=1e-4, min_appearance_threshold=100,
+    new_model_name = 'pos_weight8_lr-4_elmo_at_15_30_epochs'
+    new_embedder, md_model = train(tb_dir=new_model_name, n_epochs=30, positive_weight=8, lr=1e-4, min_appearance_threshold=100,
                          combine_yy=True)
     with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)
