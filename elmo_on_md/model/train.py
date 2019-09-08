@@ -148,8 +148,7 @@ def split_data(ma_data: torch.tensor, recover_ind: List[int], batch_lens: int, u
 
 
 if __name__ == '__main__':
-    new_model_name = 'pos_weight8_lr-4_new_tags_30epochs'
-    new_embedder = train(tb_dir=new_model_name, n_epochs=30, positive_weight=8, lr=1e-4, min_appearance_threshold=100,
-                         combine_yy=True)
+    new_model_name = 'pos_weight8_lr-4_old_tags_30epochs'
+    new_embedder = train(tb_dir=new_model_name, n_epochs=30, positive_weight=8, lr=1e-4)
     with open(f'trained_models/{new_model_name}.pkl', 'wb') as file:
         pickle.dump(new_embedder, file)

@@ -169,6 +169,8 @@ class Embedder(object):
         return model, config
 
     def sents2elmo(self, sents, output_layer=-1):
+        if self.use_cuda:
+            self.model.cuda()
         read_function = read_list
 
         if self.config['token_embedder']['name'].lower() == 'cnn':
@@ -211,4 +213,6 @@ class Embedder(object):
                     logging.info('Finished {0} sentences.'.format(cnt))
 
         after_elmo = recover(after_elmo, recover_ind)
+        self.model = self.model.to('cpu')
+        torch.cuda.empty_cache()
         return after_elmo

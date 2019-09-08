@@ -11,13 +11,13 @@ from elmo_on_md.model.bi_lstm import BiLSTM
 
 
 class NER():
-    def __init__(self, elmo: Embedder, n_tags: int = 8, pos_weight: float = 1):
-        self.elmo = elmo
+    def __init__(self, elmos: List[Embedder], n_tags: int = 8, pos_weight: float = 1):
+        self.elmos = elmos
         self.n_tags = n_tags
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # set up the model
-        self.model = BiLSTM(n_tags=n_tags + 1, p_dropout=0.8, device=self.device).to(self.device)
+        self.model = BiLSTM(embedding_dim=1024, n_tags=n_tags + 1, p_dropout=0.8, device=self.device).to(self.device)
         weights = torch.ones(n_tags) * pos_weight
         weights = torch.cat([weights, torch.ones(1)]).to(self.device)
         self.criterion = nn.CrossEntropyLoss(weight=weights)  # Binary cross entropy
@@ -68,7 +68,7 @@ class NER():
         y_pred = y_pred.argmax(dim=-1)
         return y_pred.to('cpu')
 
-    def predict_proba(self, test_set:List[pd.DataFrame]) -> torch.tensor:
+    def predict_proba(self, test_set: List[pd.DataFrame]) -> torch.tensor:
         with torch.no_grad():
             X, max_sentence_length = self._create_input(test_set)
             self.model = self.model.eval()
@@ -77,13 +77,17 @@ class NER():
         return y_pred
 
     def _create_input(self, train_set) -> Tuple[torch.tensor, int]:
-        tokens = [sentence['word'] for sentence in train_set]
-        X = self.elmo.sents2elmo(tokens, output_layer=-2)
-        max_sentence_length = max([sentence.shape[1] for sentence in X])
-        input = torch.zeros(3, len(X), max_sentence_length, X[0].shape[-1])
-        for i, sentence in enumerate(X):
-            input[:, i, :sentence.shape[1], :] = torch.from_numpy(sentence)
-        return input, max_sentence_length
+        inputs = []
+        for elmo in self.elmos:
+            tokens = [sentence['word'] for sentence in train_set]
+            X = elmo.sents2elmo(tokens, output_layer=-2)
+            max_sentence_length = max([sentence.shape[1] for sentence in X])
+            input = torch.zeros(3, len(X), max_sentence_length, X[0].shape[-1])
+            for i, sentence in enumerate(X):
+                input[:, i, :sentence.shape[1], :] = torch.from_numpy(sentence)
+            inputs.append(input)
+        inputs = torch.cat(inputs, dim=-1)
+        return inputs, max_sentence_length
 
     def _create_labels(self, train_set, max_sentence_length, tags_columns) -> torch.tensor:
         tag_col_names = tags_columns + ['not_name']
