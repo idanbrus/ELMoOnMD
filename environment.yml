@@ -1,0 +1,35 @@
+name: elmo_on_md
+channels:
+- pytorch
+- defaults
+
+dependencies:
+# Core scientific python
+- numpy
+- matplotlib
+- python>=3.6
+- pip
+- scikit-learn
+
+# Deep Learning
+- pytorch=1.1.0
+- torchvision
+- cudatoolkit
+
+
+# Jupyter Environment
+- autopep8
+- notebook
+- ipython
+- jupyter_contrib_nbextensions
+- jupyterlab
+- jupyter
+- nb_conda
+
+- pip:
+    - tqdm
+    - torchsummary
+    - tb-nightly
+    - future
+    - allennlp
+    - conllu
