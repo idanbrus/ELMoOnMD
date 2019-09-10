@@ -17,7 +17,7 @@ class NER():
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # set up the model
-        self.model = BiLSTM(embedding_dim=1024, n_tags=n_tags + 1, p_dropout=0.8, device=self.device).to(self.device)
+        self.model = BiLSTM(embedding_dim=len(elmos) * 1024, n_tags=n_tags + 1, p_dropout=0.8, device=self.device).to(self.device)
         weights = torch.ones(n_tags) * pos_weight
         weights = torch.cat([weights, torch.ones(1)]).to(self.device)
         self.criterion = nn.CrossEntropyLoss(weight=weights)  # Binary cross entropy
