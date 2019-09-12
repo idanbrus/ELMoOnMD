@@ -8,7 +8,7 @@ import datetime
 from sklearn.metrics import precision_recall_fscore_support
 from tqdm import tqdm
 
-from ELMoForManyLangs.elmoformanylangs.elmo import read_list, create_batches
+from ELMoForManyLangs.elmoformanylangs.elmo import read_list, create_batches, Embedder
 from torch.optim import Adam
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
@@ -23,7 +23,21 @@ def train(tb_dir: str = 'default',
           use_power_set: bool = False,
           min_appearance_threshold: int = 0,
           combine_yy: bool = False,
-          lr: float = 1e-4):
+          lr: float = 1e-4) -> Embedder:
+    """
+    Train a New ELMo On MD model. The model will be saved under directory "trained models"
+    Args:
+        tb_dir: A directory for tensorboard files
+        positive_weight: weight to give the positive samples in the labeled data
+        n_epochs: number of epochs to train the network
+        use_power_set: weather to use power set or not
+        min_appearance_threshold: minimum POS tag class size
+        combine_yy: weather to combine all the punctuation to one class or not
+        lr: model's learning rate
+
+    Returns:
+        A newly trained ELMo embedder
+    """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # create the pretrained elmo model
     embedder = get_pretrained_elmo()
