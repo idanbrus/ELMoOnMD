@@ -103,7 +103,7 @@ def train(tb_dir: str = 'default',
                                                     train_md_labels):
             optimizer.zero_grad()
 
-            # forward + pad with zeros
+            # forward
             w, c, masks = w.to(device), c.to(device), [masks[0].to(device), masks[1].to(device), masks[2].to(device)]
             output = elmo_model.forward(w, c, masks)
             output = md_model(output)
