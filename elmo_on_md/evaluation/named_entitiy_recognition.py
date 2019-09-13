@@ -12,12 +12,20 @@ from elmo_on_md.model.bi_lstm import BiLSTM
 
 class NER():
     def __init__(self, elmos: List[Embedder], n_tags: int = 8, pos_weight: float = 1):
+        """
+        Create a NER model
+        Args:
+            elmos: list of embedders to use to create embeddings for a given input
+            n_tags: number of different NER tags to predict on
+            pos_weight: Weight of the positive samples in the data
+        """
         self.elmos = elmos
         self.n_tags = n_tags
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # set up the model
-        self.model = BiLSTM(embedding_dim=len(elmos) * 1024, n_tags=n_tags + 1, p_dropout=0.8, device=self.device).to(self.device)
+        self.model = BiLSTM(embedding_dim=len(elmos) * 1024, n_tags=n_tags + 1, p_dropout=0.8, device=self.device).to(
+            self.device)
         weights = torch.ones(n_tags) * pos_weight
         weights = torch.cat([weights, torch.ones(1)]).to(self.device)
         self.criterion = nn.CrossEntropyLoss(weight=weights)  # Binary cross entropy
@@ -28,6 +36,18 @@ class NER():
               tags_columns: List['str'],
               n_epochs: int = 10,
               batch_size: int = 64):
+        """
+        Train the NER model
+        Args:
+            train_set: A list of dataframes, created using the NERLoader to be used as a train set
+            val_set: A list of dataframes, created using the NERLoader to be used as a validation set
+            tags_columns: name of classes to predict on
+            n_epochs: number of epochs to run the training
+            batch_size: Size of each batch to run through the network
+
+        Returns:
+            A trained NER model
+        """
 
         X, max_sentence_length = self._create_input(train_set)
         y = self._create_labels(train_set, max_sentence_length, tags_columns)
@@ -64,11 +84,29 @@ class NER():
         return self
 
     def predict(self, test_set: List[pd.DataFrame]) -> torch.tensor:
+        """
+        Predict NER classification
+        Args:
+            test_set: A list of dataframes, created using the NERLoader to be used as a test set
+
+        Returns:
+            A tensor with of size [n_sentences, n_words] with the label values, corraspanding with the tag columns given
+            in the train function.
+        """
         y_pred = self.predict_proba(test_set)
         y_pred = y_pred.argmax(dim=-1)
         return y_pred.to('cpu')
 
     def predict_proba(self, test_set: List[pd.DataFrame]) -> torch.tensor:
+        """
+        Predict NER classification probabilities
+        Args:
+            test_set: A list of dataframes, created using the NERLoader to be used as a test set
+
+        Returns:
+            A tensor with of size [n_sentences, n_words, n_tags] with the label values, corraspanding with the tag
+            columns given in the train function.
+        """
         with torch.no_grad():
             X, max_sentence_length = self._create_input(test_set)
             self.model = self.model.eval()
@@ -76,7 +114,7 @@ class NER():
             self.model = self.model.train()
         return y_pred
 
-    def _create_input(self, train_set) -> Tuple[torch.tensor, int]:
+    def _create_input(self, train_set: List[pd.DataFrame]) -> Tuple[torch.tensor, int]:
         inputs = []
         for elmo in self.elmos:
             tokens = [sentence['word'] for sentence in train_set]
@@ -89,7 +127,8 @@ class NER():
         inputs = torch.cat(inputs, dim=-1)
         return inputs, max_sentence_length
 
-    def _create_labels(self, train_set, max_sentence_length, tags_columns) -> torch.tensor:
+    def _create_labels(self, train_set: List[pd.DataFrame], max_sentence_length: int,
+                       tags_columns: List[str]) -> torch.tensor:
         tag_col_names = tags_columns + ['not_name']
         labels = torch.ones(len(train_set), max_sentence_length, dtype=torch.long) * len(tags_columns)
         for i, sentence in enumerate(train_set):

@@ -11,7 +11,7 @@ class TokenLoader(Loader):
     def load_data(self) -> dict:
         """
         load the plain text, devided into tokens
-        Returns: A dictionary with 3 entries: ['train', 'dev', 'BiLSTM_pos_weight_8']
+        Returns: A dictionary with 3 entries: ['train', 'dev', 'test']
         each one return a list of lists with sentences devided into tokens.
         """
         source_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
