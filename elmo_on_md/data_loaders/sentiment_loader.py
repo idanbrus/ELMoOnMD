@@ -6,8 +6,10 @@ from elmo_on_md.data_loaders.loader import Loader
 
 
 class SentimentLoader(Loader):
-    def __init__(self, data_path='data/sentiment'):
-        self.data_path = data_path
+    def __init__(self):
+        """
+        Create a Sentiment loader object
+        """
 
     def load_data(self):
         """

@@ -12,7 +12,7 @@ import os
 from elmo_on_md.model.bi_lstm import BiLSTM
 
 
-# RECENT CHANGE
+
 class MyBiLSTM(nn.Module):
     def __init__(self, embedding_dim: int = 1024, hidden_dim: int = 256, max_sentence_length: int = 64, n_tags=3):
         super().__init__()
@@ -43,6 +43,12 @@ class MyBiLSTM(nn.Module):
 
 class SentimentAnalysis():
     def __init__(self, elmos: List[Embedder], lr: float = 1e-4):
+        """
+        Create a Sentiment analysis model model
+        Args:
+            elmos: list of embedders to use to create embeddings for a given input
+            lr: the learning rate
+        """
         self.elmos = elmos
         self.max_sentence_length = 90
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -56,6 +62,18 @@ class SentimentAnalysis():
               n_epochs: int = 10,
               batch_size: int = 64,
               tb_dir: str = 'default'):
+        """
+        Train the sentiment model
+        Args:
+            train_set: A dictionary with 2 keys, labels (list of labels) and sentences (list of list of tokens)
+            val_set: A dictionary with the same structure as the train set, used for validation
+            n_epochs: number of epochs to run the training
+            batch_size: Size of each batch to run through the network
+            tb_dir: path to write the validation results in
+
+        Returns:
+            A trained Sentiment model
+        """
 
         labels = np.array(train_set['labels'])
         unique, counts = np.unique(labels, return_counts=True)
@@ -107,6 +125,15 @@ class SentimentAnalysis():
         return self
 
     def predict(self, test_set: Dict, batch_size: int = 64):
+        """
+        Predict Sentiment classification
+        Args:
+            test_set: A dictionary with the key 'sentences', within it a list of sentences
+            batch_size: the batch size to use
+
+        Returns:
+            A tensor with with the sentiment for each sentence
+        """
         X, lengths = self._create_input(test_set)
         batch_generator = self._chunker_list(X, X, lengths, batch_size)
         y_pred = []
