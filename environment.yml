@@ -10,6 +10,7 @@ dependencies:
 - python>=3.6
 - pip
 - scikit-learn
+- pandas
 
 # Deep Learning
 - pytorch=1.1.0
@@ -21,7 +22,6 @@ dependencies:
 - autopep8
 - notebook
 - ipython
-- jupyter_contrib_nbextensions
 - jupyterlab
 - jupyter
 - nb_conda
